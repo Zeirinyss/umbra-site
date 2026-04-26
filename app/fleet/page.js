@@ -3,6 +3,22 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
+const normalizeRole = (role) => {
+  const value = String(role || "").toLowerCase().trim();
+
+  if (["combat", "fighter", "combat ship", "gunship", "military"].includes(value)) return "Combat";
+  if (["racing", "race", "racer"].includes(value)) return "Racing";
+  if (["cargo", "freight", "hauling", "hauler", "transport"].includes(value)) return "Cargo";
+  if (["mining", "miner", "industrial mining"].includes(value)) return "Mining";
+  if (["medical", "medic", "hospital"].includes(value)) return "Medical";
+  if (["exploration", "explorer", "pathfinder"].includes(value)) return "Exploration";
+  if (["salvage", "salvager"].includes(value)) return "Salvage";
+  if (["support", "utility", "support ship"].includes(value)) return "Support";
+  if (["multi-role", "multirole", "multi role"].includes(value)) return "Multi-role";
+
+  return role || "No Role";
+};
+
 export default function FleetPage() {
   const [ships, setShips] = useState([]);
   const [shipCatalog, setShipCatalog] = useState([]);
@@ -104,16 +120,18 @@ export default function FleetPage() {
     [ships]
   );
 
-  const roles = useMemo(
-    () => ["All", ...new Set(ships.map((ship) => ship.role).filter(Boolean))],
-    [ships]
-  );
+  const roles = useMemo(() => {
+    return [
+      "All",
+      ...new Set(ships.map((ship) => normalizeRole(ship.role)).filter(Boolean)),
+    ];
+  }, [ships]);
 
   const roleBreakdown = useMemo(() => {
     const totals = {};
 
     ships.forEach((ship) => {
-      const role = ship.role || "No Role";
+      const role = normalizeRole(ship.role);
       totals[role] = (totals[role] || 0) + Number(ship.quantity || 0);
     });
 
@@ -123,18 +141,26 @@ export default function FleetPage() {
   }, [ships]);
 
   const filteredShips = useMemo(() => {
-    return ships.filter((ship) => {
-      const query = search.toLowerCase();
+    return ships
+      .filter((ship) => {
+        const query = search.toLowerCase();
 
-      const matchesRole = roleFilter === "All" || ship.role === roleFilter;
+        const normalizedShipRole = normalizeRole(ship.role);
+        const normalizedFilterRole = normalizeRole(roleFilter);
 
-      const matchesSearch =
-        ship.ship_name?.toLowerCase().includes(query) ||
-        ship.custom_ship_name?.toLowerCase().includes(query) ||
-        ship.rsi_handle?.toLowerCase().includes(query);
+        const matchesRole =
+          roleFilter === "All" || normalizedShipRole === normalizedFilterRole;
 
-      return matchesRole && matchesSearch;
-    });
+        const matchesSearch =
+          ship.ship_name?.toLowerCase().includes(query) ||
+          ship.custom_ship_name?.toLowerCase().includes(query) ||
+          ship.rsi_handle?.toLowerCase().includes(query);
+
+        return matchesRole && matchesSearch;
+      })
+      .sort((a, b) =>
+        String(a.ship_name || "").localeCompare(String(b.ship_name || ""))
+      );
   }, [ships, roleFilter, search]);
 
   async function loadPage() {
@@ -286,7 +312,7 @@ export default function FleetPage() {
         rsi_handle: member.rsi_handle,
         ship_name: form.ship_name,
         custom_ship_name: finalCustomName || null,
-        role: form.role,
+        role: normalizeRole(form.role),
         quantity: finalQuantity,
         status: form.status,
         notes: form.notes,
@@ -777,7 +803,7 @@ export default function FleetPage() {
                       )}
 
                       <span className="rounded-full bg-zinc-900 px-3 py-1 text-sm text-zinc-300">
-                        {ship.role || "No Role"}
+                        {normalizeRole(ship.role)}
                       </span>
 
                       <span className="rounded-full bg-zinc-900 px-3 py-1 text-sm text-zinc-300">

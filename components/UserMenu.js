@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { getUserStatus } from "@/lib/getUserStatus";
 
@@ -9,9 +9,23 @@ export default function UserMenu() {
   const [member, setMember] = useState(null);
   const [role, setRole] = useState(null);
   const [status, setStatus] = useState("guest");
+  const [open, setOpen] = useState(false);
+
+  const dropdownRef = useRef();
 
   useEffect(() => {
     loadUser();
+  }, []);
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   async function loadUser() {
@@ -28,51 +42,98 @@ export default function UserMenu() {
     window.location.href = "/";
   }
 
-  // 🔓 GUEST
+  // GUEST
   if (!user) {
     return (
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4 text-sm font-bold text-zinc-300">
+        <a href="/about" className="hover:text-red-400">About</a>
+        <a href="/leadership" className="hover:text-red-400">Leadership</a>
+        <a href="/divisions" className="hover:text-red-400">Divisions</a>
         <a href="/login" className="hover:text-red-400">Login</a>
         <a href="/request-access" className="hover:text-red-400">Request</a>
       </div>
     );
   }
 
-  // ⏳ PENDING
+  // PENDING
   if (status === "pending") {
     return (
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4 text-sm font-bold text-zinc-300">
         <a href="/pending" className="hover:text-red-400">Pending</a>
         <button onClick={logout} className="hover:text-red-400">Logout</button>
       </div>
     );
   }
 
-  // ✅ APPROVED
+  // APPROVED
   return (
-    <div className="flex items-center gap-4">
+    <div className="flex items-center gap-4 text-sm font-bold text-zinc-300">
+
+      {/* MAIN NAV */}
+      <a href="/about" className="hover:text-red-400">About</a>
+      <a href="/leadership" className="hover:text-red-400">Leadership</a>
+      <a href="/divisions" className="hover:text-red-400">Divisions</a>
+
+      <div className="hidden h-5 w-px bg-zinc-700 md:block" />
+
+      <a href="/command-center" className="hover:text-red-400">Command Center</a>
       <a href="/events" className="hover:text-red-400">Calendar</a>
       <a href="/members" className="hover:text-red-400">Members</a>
       <a href="/fleet" className="hover:text-red-400">Fleet</a>
-      <a href="/my-fleet" className="hover:text-red-400">My Fleet</a>
+      <a href="/suggestions" className="hover:text-red-400">Suggestions</a>
 
-      {role && (
-        <a href="/admin" className="hover:text-red-400">Admin</a>
-      )}
+      {/* USER DROPDOWN */}
+      <div className="relative" ref={dropdownRef}>
+        <button
+          onClick={() => setOpen(!open)}
+          className="rounded-lg border border-red-900 px-3 py-1 text-red-300 hover:bg-red-950/30"
+        >
+          {member?.rsi_handle || user.email}
+        </button>
 
-      <a
-        href={member?.id ? `/members/${member.id}` : "/pending"}
-        className="rounded-lg border border-red-900 px-3 py-1 text-sm text-red-300 hover:bg-red-950/30"
-      >
-        {member?.rsi_handle || user.email}
-      </a>
+        {open && (
+          <div className="absolute right-0 mt-2 w-48 rounded-xl border border-zinc-800 bg-black shadow-xl">
 
-      <button
-        onClick={logout}
-        className="rounded-lg border border-zinc-800 px-3 py-1 hover:bg-zinc-900"
-      >
-        Logout
-      </button>
+            <a
+              href={member?.id ? `/members/${member.id}` : "/pending"}
+              className="block px-4 py-2 hover:bg-zinc-900"
+            >
+              Profile
+            </a>
+
+            {/* ✅ MOVED HERE */}
+            <a
+              href="/my-fleet"
+              className="block px-4 py-2 hover:bg-zinc-900"
+            >
+              My Fleet
+            </a>
+
+            <a
+              href="/org-funds"
+              className="block px-4 py-2 hover:bg-zinc-900"
+            >
+              Org Funds
+            </a>
+
+            {role && (
+              <a
+                href="/admin"
+                className="block px-4 py-2 hover:bg-zinc-900"
+              >
+                Admin
+              </a>
+            )}
+
+            <button
+              onClick={logout}
+              className="w-full text-left px-4 py-2 hover:bg-zinc-900"
+            >
+              Logout
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
