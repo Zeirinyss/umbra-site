@@ -9,6 +9,15 @@ export default function MyFleetPage() {
   const [ships, setShips] = useState([]);
   const [message, setMessage] = useState("Loading...");
   const [search, setSearch] = useState("");
+  const [editingId, setEditingId] = useState(null);
+
+  const [editForm, setEditForm] = useState({
+    ship_name: "",
+    role: "",
+    quantity: 1,
+    status: "Active",
+    notes: "",
+  });
 
   useEffect(() => {
     loadMyFleet();
@@ -56,6 +65,57 @@ export default function MyFleetPage() {
 
     setShips(data || []);
     setMessage("");
+  }
+
+  function startEdit(ship) {
+    setEditingId(ship.id);
+    setEditForm({
+      ship_name: ship.ship_name || "",
+      role: ship.role || "",
+      quantity: ship.quantity || 1,
+      status: ship.status || "Active",
+      notes: ship.notes || "",
+    });
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditForm({
+      ship_name: "",
+      role: "",
+      quantity: 1,
+      status: "Active",
+      notes: "",
+    });
+  }
+
+  function updateEditForm(field, value) {
+    setEditForm((current) => ({ ...current, [field]: value }));
+  }
+
+  async function saveEdit(ship) {
+    setMessage("");
+
+    const { error } = await supabase
+      .from("fleet")
+      .update({
+        ship_name: editForm.ship_name,
+        role: editForm.role,
+        quantity: Number(editForm.quantity),
+        status: editForm.status,
+        notes: editForm.notes,
+      })
+      .eq("id", ship.id)
+      .eq("user_id", user.id);
+
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    setMessage("Ship updated.");
+    setEditingId(null);
+    loadMyFleet();
   }
 
   async function deleteShip(ship) {
@@ -112,13 +172,9 @@ export default function MyFleetPage() {
               <a href="/fleet" className="rounded-xl border border-zinc-800 px-5 py-3 font-bold hover:bg-zinc-900">
                 Org Fleet
               </a>
-              <a href="/my-fleet" className="rounded-xl bg-red-700 px-5 py-3 font-bold hover:bg-red-600">
-                My Fleet
+              <a href="/members" className="rounded-xl border border-zinc-800 px-5 py-3 font-bold hover:bg-zinc-900">
+                Members
               </a>
-              <a href="/admin" className="rounded-xl border border-zinc-800 px-5 py-3 font-bold hover:bg-zinc-900">
-                Admin
-              </a>
-
               <button onClick={logout} className="rounded-xl border border-red-900 px-5 py-3 font-bold hover:bg-red-950/30">
                 Logout
               </button>
@@ -127,12 +183,16 @@ export default function MyFleetPage() {
 
           <div className="mt-10 grid gap-4 md:grid-cols-2">
             <div className="rounded-2xl border border-zinc-800 bg-black/50 p-5">
-              <p className="text-sm uppercase tracking-[0.2em] text-zinc-500">My Total Ships</p>
+              <p className="text-sm uppercase tracking-[0.2em] text-zinc-500">
+                My Total Ships
+              </p>
               <p className="mt-2 text-4xl font-black text-red-400">{totalShips}</p>
             </div>
 
             <div className="rounded-2xl border border-zinc-800 bg-black/50 p-5">
-              <p className="text-sm uppercase tracking-[0.2em] text-zinc-500">Ships Listed</p>
+              <p className="text-sm uppercase tracking-[0.2em] text-zinc-500">
+                Ships Listed
+              </p>
               <p className="mt-2 text-4xl font-black text-red-400">{ships.length}</p>
             </div>
           </div>
@@ -143,7 +203,9 @@ export default function MyFleetPage() {
         <div className="mb-6 flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <div>
             <h2 className="text-3xl font-black">Personal Fleet Registry</h2>
-            <p className="mt-1 text-sm text-zinc-500">Only ships owned by your logged-in account.</p>
+            <p className="mt-1 text-sm text-zinc-500">
+              Edit, update, or delete your submitted ships.
+            </p>
           </div>
 
           <input
@@ -167,32 +229,118 @@ export default function MyFleetPage() {
         ) : (
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {filteredShips.map((ship) => (
-              <div key={ship.id} className="rounded-3xl border border-zinc-800 bg-black/60 p-5 transition hover:border-red-900">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <h2 className="text-2xl font-black">{ship.ship_name}</h2>
-                    <p className="mt-1 text-sm text-zinc-500">
-                      {ship.role} • {ship.status}
-                    </p>
+              <div
+                key={ship.id}
+                className="rounded-3xl border border-zinc-800 bg-black/60 p-5 transition hover:border-red-900"
+              >
+                {editingId === ship.id ? (
+                  <div className="grid gap-4">
+                    <input
+                      value={editForm.ship_name}
+                      onChange={(e) => updateEditForm("ship_name", e.target.value)}
+                      className="rounded-xl border border-zinc-800 bg-zinc-950 p-3 outline-none focus:border-red-700"
+                      placeholder="Ship Name"
+                    />
+
+                    <select
+                      value={editForm.role}
+                      onChange={(e) => updateEditForm("role", e.target.value)}
+                      className="rounded-xl border border-zinc-800 bg-zinc-950 p-3 outline-none focus:border-red-700"
+                    >
+                      <option value="">Select Role</option>
+                      <option>Combat</option>
+                      <option>Racing</option>
+                      <option>Cargo</option>
+                      <option>Mining</option>
+                      <option>Medical</option>
+                      <option>Exploration</option>
+                      <option>Salvage</option>
+                      <option>Support</option>
+                      <option>Multi-role</option>
+                    </select>
+
+                    <input
+                      type="number"
+                      min="1"
+                      value={editForm.quantity}
+                      onChange={(e) => updateEditForm("quantity", e.target.value)}
+                      className="rounded-xl border border-zinc-800 bg-zinc-950 p-3 outline-none focus:border-red-700"
+                    />
+
+                    <select
+                      value={editForm.status}
+                      onChange={(e) => updateEditForm("status", e.target.value)}
+                      className="rounded-xl border border-zinc-800 bg-zinc-950 p-3 outline-none focus:border-red-700"
+                    >
+                      <option>Active</option>
+                      <option>Loaner</option>
+                      <option>Concept</option>
+                      <option>Stored</option>
+                      <option>Sold</option>
+                      <option>Melted</option>
+                    </select>
+
+                    <textarea
+                      value={editForm.notes}
+                      onChange={(e) => updateEditForm("notes", e.target.value)}
+                      className="min-h-28 rounded-xl border border-zinc-800 bg-zinc-950 p-3 outline-none focus:border-red-700"
+                      placeholder="Notes"
+                    />
+
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => saveEdit(ship)}
+                        className="rounded-xl bg-green-700 px-4 py-2 font-bold hover:bg-green-600"
+                      >
+                        Save
+                      </button>
+
+                      <button
+                        onClick={cancelEdit}
+                        className="rounded-xl border border-zinc-700 px-4 py-2 font-bold hover:bg-zinc-900"
+                      >
+                        Cancel
+                      </button>
+                    </div>
                   </div>
+                ) : (
+                  <>
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <h2 className="text-2xl font-black">{ship.ship_name}</h2>
+                        <p className="mt-1 text-sm text-zinc-500">
+                          {ship.role} • {ship.status}
+                        </p>
+                      </div>
 
-                  <span className="rounded-full border border-red-900 bg-red-950/40 px-3 py-1 text-sm font-bold text-red-200">
-                    Qty {ship.quantity}
-                  </span>
-                </div>
+                      <span className="rounded-full border border-red-900 bg-red-950/40 px-3 py-1 text-sm font-bold text-red-200">
+                        Qty {ship.quantity}
+                      </span>
+                    </div>
 
-                {ship.notes && (
-                  <p className="mt-5 border-t border-zinc-900 pt-4 text-sm leading-6 text-zinc-400">
-                    {ship.notes}
-                  </p>
+                    {ship.notes && (
+                      <p className="mt-5 border-t border-zinc-900 pt-4 text-sm leading-6 text-zinc-400">
+                        {ship.notes}
+                      </p>
+                    )}
+
+                    <div className="mt-5 flex gap-3">
+                      <button
+                        onClick={() => startEdit(ship)}
+                        className="rounded-xl border border-zinc-700 px-4 py-2 text-sm font-bold text-zinc-200 hover:bg-zinc-900"
+                      >
+                        Edit
+                      </button>
+
+                      <button
+                        onClick={() => deleteShip(ship)}
+                        className="rounded-xl border border-red-900 bg-red-950/30 px-4 py-2 text-sm font-bold text-red-200 hover:bg-red-900/50"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </>
                 )}
-
-                <button
-                  onClick={() => deleteShip(ship)}
-                  className="mt-5 rounded-xl border border-red-900 bg-red-950/30 px-4 py-2 text-sm font-bold text-red-200 hover:bg-red-900/50"
-                >
-                  Delete Ship
-                </button>
               </div>
             ))}
           </div>
