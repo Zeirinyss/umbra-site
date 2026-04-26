@@ -92,7 +92,7 @@ export default function UserMenu() {
         </button>
 
         {open && (
-          <div className="absolute right-0 mt-2 w-48 rounded-xl border border-zinc-800 bg-black shadow-xl">
+          <div className="absolute right-0 mt-2 w-52 rounded-xl border border-zinc-800 bg-black shadow-xl">
 
             <a
               href={member?.id ? `/members/${member.id}` : "/pending"}
@@ -101,7 +101,6 @@ export default function UserMenu() {
               Profile
             </a>
 
-            {/* ✅ MOVED HERE */}
             <a
               href="/my-fleet"
               className="block px-4 py-2 hover:bg-zinc-900"
@@ -115,6 +114,26 @@ export default function UserMenu() {
             >
               Org Funds
             </a>
+
+            {/* 🔥 SITE SETTINGS */}
+            {role && (
+              <a
+                href="/admin/site-settings"
+                className="block px-4 py-2 hover:bg-zinc-900 text-red-400"
+              >
+                Site Settings
+              </a>
+            )}
+
+            {/* 🔥 NEW: LEADERSHIP EDITOR */}
+            {role && (
+              <a
+                href="/admin/leadership"
+                className="block px-4 py-2 hover:bg-zinc-900 text-red-400"
+              >
+                Leadership Editor
+              </a>
+            )}
 
             {role && (
               <a
