@@ -1,7 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import UserMenu from "@/components/UserMenu";
+import { getUserStatus } from "@/lib/getUserStatus";
 
 const leadership = [
   { handle: "TheBunnynator1001", title: "CEO", division: "Executive Command" },
@@ -35,6 +36,17 @@ const divisions = [
 ];
 
 export default function Home() {
+  const [isApprovedMember, setIsApprovedMember] = useState(false);
+
+  useEffect(() => {
+    loadStatus();
+  }, []);
+
+  async function loadStatus() {
+    const status = await getUserStatus();
+    setIsApprovedMember(status.status === "approved");
+  }
+
   return (
     <main className="min-h-screen bg-zinc-950 text-white">
       <section className="relative overflow-hidden border-b border-red-950 bg-black">
@@ -99,12 +111,25 @@ export default function Home() {
               </p>
 
               <div className="mt-9 flex flex-wrap gap-4">
-                <a
-                  href="/request-access"
-                  className="rounded-2xl bg-red-700 px-8 py-4 font-black shadow-lg shadow-red-950/40 hover:bg-red-600"
-                >
-                  Request Access
-                </a>
+                {!isApprovedMember && (
+                  <>
+                    <a
+                      href="https://robertsspaceindustries.com/en/orgs/UCOR"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-2xl bg-red-700 px-8 py-4 font-black shadow-lg shadow-red-950/40 hover:bg-red-600"
+                    >
+                      Apply on RSI
+                    </a>
+
+                    <a
+                      href="/request-access"
+                      className="rounded-2xl border border-red-800 bg-black/50 px-8 py-4 font-black hover:bg-red-950/30"
+                    >
+                      Request Access
+                    </a>
+                  </>
+                )}
 
                 <a
                   href="#divisions"
