@@ -16,6 +16,7 @@ export default function FleetPage() {
   const [roleFilter, setRoleFilter] = useState("All");
   const [search, setSearch] = useState("");
   const [selectedManufacturer, setSelectedManufacturer] = useState("");
+  const [showRoleBreakdown, setShowRoleBreakdown] = useState(false);
 
   const [editingShip, setEditingShip] = useState(null);
   const [editForm, setEditForm] = useState({
@@ -513,25 +514,37 @@ export default function FleetPage() {
 
           {roleBreakdown.length > 0 && (
             <div className="mt-6 rounded-3xl border border-zinc-800 bg-black/50 p-5">
-              <p className="text-sm uppercase tracking-[0.2em] text-zinc-500">
-                Role Breakdown
-              </p>
+              <button
+                type="button"
+                onClick={() => setShowRoleBreakdown(!showRoleBreakdown)}
+                className="flex w-full items-center justify-between text-left"
+              >
+                <p className="text-sm uppercase tracking-[0.2em] text-zinc-500">
+                  Role Breakdown
+                </p>
 
-              <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-                {roleBreakdown.map((item) => (
-                  <div
-                    key={item.role}
-                    className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
-                  >
-                    <p className="text-sm font-bold text-zinc-300">
-                      {item.role}
-                    </p>
-                    <p className="mt-2 text-3xl font-black text-red-400">
-                      {item.count}
-                    </p>
-                  </div>
-                ))}
-              </div>
+                <span className="rounded-full border border-zinc-800 px-3 py-1 text-sm text-zinc-300">
+                  {showRoleBreakdown ? "Hide ▲" : "Show ▼"}
+                </span>
+              </button>
+
+              {showRoleBreakdown && (
+                <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+                  {roleBreakdown.map((item) => (
+                    <div
+                      key={item.role}
+                      className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
+                    >
+                      <p className="text-sm font-bold text-zinc-300">
+                        {item.role}
+                      </p>
+                      <p className="mt-2 text-3xl font-black text-red-400">
+                        {item.count}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
