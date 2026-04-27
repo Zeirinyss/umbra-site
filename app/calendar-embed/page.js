@@ -29,50 +29,53 @@ export default function CalendarEmbedPage() {
   const [message, setMessage] = useState("Loading calendar...");
   const [allowed, setAllowed] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedEvent, setSelectedEvent] = useState(null);
 
- useEffect(() => {
-  const params = new URLSearchParams(window.location.search);
-  const key = params.get("key");
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const key = params.get("key");
 
-  if (key !== EMBED_KEY) {
-    setMessage("Access denied.");
-    return;
-  }
-
-  setAllowed(true);
-  loadEvents();
-
-  const unsubscribe = subscribeToTables(
-    "calendar-embed-live",
-    ["events"],
-    () => {
-      loadEvents();
+    if (key !== EMBED_KEY) {
+      setMessage("Access denied.");
+      return;
     }
-  );
 
-  return unsubscribe;
-}, []);
+    setAllowed(true);
+    loadEvents();
+
+    const unsubscribe = subscribeToTables(
+      "calendar-embed-live",
+      ["events"],
+      () => {
+        loadEvents();
+      }
+    );
+
+    return unsubscribe;
+  }, []);
 
   async function loadEvents() {
     try {
-      // 🔴 Get iCal events
-      const res = await fetch("/api/calendar", { cache: "no-store" });
+      const res = await fetch(`/api/calendar?t=${Date.now()}`, {
+        cache: "no-store",
+      });
+
       const data = await res.json();
       const icalEvents = data.events || [];
 
-      // 🔴 Get Supabase events
       const { data: dbEvents } = await supabase
         .from("events")
-        .select("*");
+        .select("*")
+        .order("start_time", { ascending: true });
 
       const formattedDbEvents = (dbEvents || []).map((e) => ({
         title: e.title,
+        description: e.description,
         start: e.start_time,
         end: e.end_time,
         location: e.location,
       }));
 
-      // 🔥 Merge both
       const combined = [...icalEvents, ...formattedDbEvents];
 
       setEvents(combined);
@@ -148,15 +151,28 @@ export default function CalendarEmbedPage() {
   return (
     <main className="min-h-screen bg-zinc-950 text-white p-4">
       <section className="mx-auto max-w-7xl">
+        <div className="mb-6 flex items-center justify-between gap-3">
+          <button
+            onClick={previousMonth}
+            className="rounded-xl border border-zinc-800 px-3 py-2 text-sm font-bold hover:bg-zinc-900"
+          >
+            Prev
+          </button>
 
-        <h1 className="mb-6 text-3xl font-black">{monthName}</h1>
+          <h1 className="text-center text-2xl font-black">{monthName}</h1>
+
+          <button
+            onClick={nextMonth}
+            className="rounded-xl border border-zinc-800 px-3 py-2 text-sm font-bold hover:bg-zinc-900"
+          >
+            Next
+          </button>
+        </div>
 
         <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
-
-          {/* CALENDAR */}
           <div className="rounded-2xl border border-zinc-800 bg-black">
             <div className="grid grid-cols-7 bg-zinc-950">
-              {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map((d) => (
+              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
                 <div key={d} className="p-2 text-center text-xs text-zinc-500">
                   {d}
                 </div>
@@ -165,35 +181,94 @@ export default function CalendarEmbedPage() {
 
             <div className="grid grid-cols-7">
               {calendarDays.map((day, i) => (
-                <div key={i} className="min-h-24 border p-2 border-zinc-900">
-                  <p className="text-sm">{day.date.getDate()}</p>
+                <div key={i} className="min-h-24 border border-zinc-900 p-2">
+                  <p
+                    className={`text-sm ${
+                      day.inCurrentMonth ? "text-white" : "text-zinc-700"
+                    }`}
+                  >
+                    {day.date.getDate()}
+                  </p>
 
                   {day.events.map((event, idx) => (
-                    <div key={idx} className="text-xs text-red-400">
-                      {event.title}
-                    </div>
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setSelectedEvent(event)}
+                      className="mt-1 block w-full rounded bg-red-950/60 px-2 py-1 text-left text-xs text-red-300 hover:bg-red-900/70"
+                    >
+                      <p className="truncate font-bold">{event.title}</p>
+                      <p className="text-[10px] text-zinc-400">
+                        {formatEasternTime(event.start)}
+                      </p>
+                    </button>
                   ))}
                 </div>
               ))}
             </div>
           </div>
 
-          {/* SIDE */}
           <aside className="rounded-2xl border border-zinc-800 bg-black p-4">
             <h2 className="text-xl font-bold">Upcoming</h2>
 
-            {upcomingEvents.map((event, i) => (
-              <div key={i} className="mt-3">
-                <p className="font-bold">{event.title}</p>
-                <p className="text-sm text-red-400">
-                  {formatEastern(event.start)}
-                </p>
-              </div>
-            ))}
+            {upcomingEvents.length === 0 ? (
+              <p className="mt-3 text-sm text-zinc-500">No upcoming events.</p>
+            ) : (
+              upcomingEvents.map((event, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setSelectedEvent(event)}
+                  className="mt-3 block w-full rounded-xl border border-zinc-800 bg-zinc-950 p-3 text-left hover:border-red-900"
+                >
+                  <p className="font-bold">{event.title}</p>
+                  <p className="text-sm text-red-400">
+                    {formatEastern(event.start)}
+                  </p>
+                </button>
+              ))
+            )}
           </aside>
-
         </div>
       </section>
+
+      {selectedEvent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+          <div className="w-full max-w-md rounded-2xl border border-red-900 bg-zinc-950 p-5 text-white shadow-2xl shadow-red-950/40">
+            <h2 className="text-2xl font-black">{selectedEvent.title}</h2>
+
+            <p className="mt-3 text-sm text-red-400">
+              {formatEastern(selectedEvent.start)}
+            </p>
+
+            {selectedEvent.end && (
+              <p className="mt-1 text-sm text-zinc-500">
+                Ends: {formatEastern(selectedEvent.end)}
+              </p>
+            )}
+
+            {selectedEvent.location && (
+              <p className="mt-3 text-sm text-zinc-300">
+                <b>Location:</b> {selectedEvent.location}
+              </p>
+            )}
+
+            {selectedEvent.description && (
+              <p className="mt-4 whitespace-pre-line text-sm leading-6 text-zinc-400">
+                {selectedEvent.description}
+              </p>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setSelectedEvent(null)}
+              className="mt-6 w-full rounded-xl bg-red-700 p-3 font-bold hover:bg-red-600"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
