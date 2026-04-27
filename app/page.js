@@ -26,8 +26,11 @@ export default function Home() {
     setIsApprovedMember(status.status === "approved");
   }
 
+  // ✅ THIS IS THE FIXED PART (matches your admin page)
   async function loadSettings() {
-    const { data, error } = await supabase.from("site_settings").select("*");
+    const { data, error } = await supabase
+      .from("site_settings")
+      .select("*");
 
     if (error || !data) return;
 
@@ -80,12 +83,17 @@ export default function Home() {
           src={getYouTubeEmbed(url)}
           className="h-full w-full"
           allowFullScreen
+          title="Umbra Command Broadcast"
         />
       );
     }
 
     return (
-      <video src={url} controls className="h-full w-full object-cover" />
+      <video
+        src={url}
+        controls
+        className="h-full w-full object-cover"
+      />
     );
   }
 
