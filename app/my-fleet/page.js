@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { subscribeToTables } from "@/lib/realtimeRefresh";
 
 export default function MyFleetPage() {
   const [user, setUser] = useState(null);
@@ -19,9 +20,19 @@ export default function MyFleetPage() {
     notes: "",
   });
 
-  useEffect(() => {
-    loadMyFleet();
-  }, []);
+ useEffect(() => {
+  loadMyFleet();
+
+  const unsubscribe = subscribeToTables(
+    "my-fleet-live",
+    ["fleet", "members"],
+    () => {
+      loadMyFleet();
+    }
+  );
+
+  return unsubscribe;
+}, []);
 
   const totalShips = useMemo(() => {
     return ships.reduce((total, ship) => total + Number(ship.quantity || 0), 0);

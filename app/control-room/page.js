@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { subscribeToTables } from "@/lib/realtimeRefresh";
 
 const EVENT_TYPES = [
   { value: "operation", label: "Operation" },
@@ -36,14 +37,24 @@ export default function ControlRoomPage() {
   const [editingEventId, setEditingEventId] = useState(null);
 
   useEffect(() => {
-    const stored = localStorage.getItem("umbra_control_room_code");
+  const stored = localStorage.getItem("umbra_control_room_code");
 
-    if (stored) {
-      setSavedCode(stored);
-      setUnlocked(true);
-      loadData(stored);
-    }
-  }, []);
+  if (stored) {
+    setSavedCode(stored);
+    setUnlocked(true);
+    loadData(stored);
+
+    const unsubscribe = subscribeToTables(
+      "control-room-live",
+      ["events", "members", "member_requests"],
+      () => {
+        loadData(stored);
+      }
+    );
+
+    return unsubscribe;
+  }
+}, []);
 
   async function unlockControlRoom(event) {
     event.preventDefault();

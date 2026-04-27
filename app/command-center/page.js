@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import UserMenu from "@/components/UserMenu";
 import { supabase } from "@/lib/supabase";
 import { getUserStatus } from "@/lib/getUserStatus";
+import { subscribeToTables } from "@/lib/realtimeRefresh";
 
 export default function CommandCenterPage() {
   const [user, setUser] = useState(null);
@@ -21,8 +22,18 @@ export default function CommandCenterPage() {
   const canPost = !!role;
 
   useEffect(() => {
-    loadPage();
-  }, []);
+  loadPage();
+
+  const unsubscribe = subscribeToTables(
+    "command-center-live",
+    ["command_posts"],
+    () => {
+      fetchPosts();
+    }
+  );
+
+  return unsubscribe;
+}, []);
 
   useEffect(() => {
     if (status !== "approved") return;

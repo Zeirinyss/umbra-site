@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { subscribeToTables } from "@/lib/realtimeRefresh";
 
 const normalizeRole = (role) => {
   const value = String(role || "").toLowerCase().trim();
@@ -52,8 +53,19 @@ export default function FleetPage() {
   });
 
   useEffect(() => {
-    loadPage();
-  }, []);
+  loadPage();
+
+  const unsubscribe = subscribeToTables(
+    "fleet-live",
+    ["fleet", "ship_catalog", "members"],
+    () => {
+      fetchShips();
+      fetchShipCatalog();
+    }
+  );
+
+  return unsubscribe;
+}, []);
 
   useEffect(() => {
     if (!message || message === "Checking access...") return;

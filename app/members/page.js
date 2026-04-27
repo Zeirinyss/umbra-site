@@ -3,14 +3,25 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { getUserStatus } from "@/lib/getUserStatus";
+import { subscribeToTables } from "@/lib/realtimeRefresh";
 
 export default function MembersPage() {
   const [members, setMembers] = useState([]);
   const [message, setMessage] = useState("Loading...");
 
-  useEffect(() => {
-    initPage();
-  }, []);
+ useEffect(() => {
+  initPage();
+
+  const unsubscribe = subscribeToTables(
+    "members-live",
+    ["members"],
+    () => {
+      fetchMembers();
+    }
+  );
+
+  return unsubscribe;
+}, []);
 
   async function initPage() {
     const status = await getUserStatus();

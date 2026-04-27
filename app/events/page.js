@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { subscribeToTables } from "@/lib/realtimeRefresh";
 
 const EVENT_TYPES = [
   { value: "operation", label: "Operation" },
@@ -84,9 +85,19 @@ export default function EventsPage() {
     end_time: "",
   });
 
-  useEffect(() => {
-    loadEvents();
-  }, []);
+ useEffect(() => {
+  loadEvents();
+
+  const unsubscribe = subscribeToTables(
+    "events-live",
+    ["events", "event_attendees"],
+    () => {
+      loadEvents();
+    }
+  );
+
+  return unsubscribe;
+}, []);
 
   const monthName = currentDate.toLocaleString("en-US", {
     month: "long",

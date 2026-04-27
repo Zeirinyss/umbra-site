@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { subscribeToTables } from "@/lib/realtimeRefresh";
 
 export default function CalendarPage() {
   const [events, setEvents] = useState([]);
@@ -18,9 +19,19 @@ export default function CalendarPage() {
   });
 
   useEffect(() => {
-    fetchEvents();
-    checkAdmin();
-  }, []);
+  fetchEvents();
+  checkAdmin();
+
+  const unsubscribe = subscribeToTables(
+    "simple-calendar-live",
+    ["events"],
+    () => {
+      fetchEvents();
+    }
+  );
+
+  return unsubscribe;
+}, []);
 
   async function checkAdmin() {
     const {

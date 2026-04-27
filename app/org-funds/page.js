@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import UserMenu from "@/components/UserMenu";
 import { supabase } from "@/lib/supabase";
 import { getUserStatus } from "@/lib/getUserStatus";
+import { subscribeToTables } from "@/lib/realtimeRefresh";
 
 export default function OrgFundsPage() {
   const [user, setUser] = useState(null);
@@ -21,9 +22,19 @@ export default function OrgFundsPage() {
 
   const isAdmin = !!role;
 
-  useEffect(() => {
-    loadPage();
-  }, []);
+ useEffect(() => {
+  loadPage();
+
+  const unsubscribe = subscribeToTables(
+    "org-funds-live",
+    ["org_fund_requests"],
+    () => {
+      fetchRequests();
+    }
+  );
+
+  return unsubscribe;
+}, []);
 
   const acceptedFunds = useMemo(() => {
     return requests

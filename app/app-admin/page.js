@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { subscribeToTables } from "@/lib/realtimeRefresh";
 
 export default function AppAdmin() {
   const [user, setUser] = useState(null);
@@ -10,8 +11,18 @@ export default function AppAdmin() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadAdmin();
-  }, []);
+  loadAdmin();
+
+  const unsubscribe = subscribeToTables(
+    "app-admin-live",
+    ["members"],
+    () => {
+      loadAdmin();
+    }
+  );
+
+  return unsubscribe;
+}, []);
 
   async function loadAdmin() {
     const { data } = await supabase.auth.getUser();

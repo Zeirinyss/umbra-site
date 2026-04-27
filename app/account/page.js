@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { subscribeToTables } from "@/lib/realtimeRefresh";
 
 export default function AccountPage() {
   const [user, setUser] = useState(null);
@@ -9,8 +10,18 @@ export default function AccountPage() {
   const [message, setMessage] = useState("Loading...");
 
   useEffect(() => {
-    loadAccount();
-  }, []);
+  loadAccount();
+
+  const unsubscribe = subscribeToTables(
+    "account-live",
+    ["members"],
+    () => {
+      loadAccount();
+    }
+  );
+
+  return unsubscribe;
+}, []);
 
   async function loadAccount() {
     const { data } = await supabase.auth.getUser();

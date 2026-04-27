@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { subscribeToTables } from "@/lib/realtimeRefresh";
 
 function hasRole(requiredRole, userRole) {
   const hierarchy = ["officer", "admin", "owner"];
@@ -21,8 +22,20 @@ export default function AdminPage() {
   const [declineReasons, setDeclineReasons] = useState({});
 
   useEffect(() => {
-    loadAdmin();
-  }, []);
+  loadAdmin();
+
+  const unsubscribe = subscribeToTables(
+    "full-admin-live",
+    ["members", "member_requests", "admins"],
+    () => {
+      fetchRequests();
+      fetchMembers();
+      fetchAdmins();
+    }
+  );
+
+  return unsubscribe;
+}, []);
 
   const pendingRequests = useMemo(
     () => requests.filter((req) => req.status === "pending"),

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { subscribeToTables } from "@/lib/realtimeRefresh";
 
 const EMBED_KEY = "umbra-calendar-2026-private-key";
 
@@ -29,18 +30,28 @@ export default function CalendarEmbedPage() {
   const [allowed, setAllowed] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const key = params.get("key");
+ useEffect(() => {
+  const params = new URLSearchParams(window.location.search);
+  const key = params.get("key");
 
-    if (key !== EMBED_KEY) {
-      setMessage("Access denied.");
-      return;
+  if (key !== EMBED_KEY) {
+    setMessage("Access denied.");
+    return;
+  }
+
+  setAllowed(true);
+  loadEvents();
+
+  const unsubscribe = subscribeToTables(
+    "calendar-embed-live",
+    ["events"],
+    () => {
+      loadEvents();
     }
+  );
 
-    setAllowed(true);
-    loadEvents();
-  }, []);
+  return unsubscribe;
+}, []);
 
   async function loadEvents() {
     try {

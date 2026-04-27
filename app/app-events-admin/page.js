@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { subscribeToTables } from "@/lib/realtimeRefresh";
 
 const EVENT_TYPES = ["Operation", "Training", "Race", "Meeting", "Social"];
 
@@ -52,9 +53,19 @@ export default function AppEventsAdminPage() {
     end_time: "",
   });
 
-  useEffect(() => {
-    loadPage();
-  }, []);
+ useEffect(() => {
+  loadPage();
+
+  const unsubscribe = subscribeToTables(
+    "app-events-admin-live",
+    ["events"],
+    () => {
+      fetchEvents();
+    }
+  );
+
+  return unsubscribe;
+}, []);
 
   const monthName = currentDate.toLocaleString("en-US", {
     month: "long",

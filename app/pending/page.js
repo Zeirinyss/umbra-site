@@ -1,8 +1,47 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { subscribeToTables } from "@/lib/realtimeRefresh";
 
 export default function PendingPage() {
+  const router = useRouter();
+
+  async function checkApproval() {
+    const { data } = await supabase.auth.getUser();
+    const user = data.user;
+
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+
+    const { data: member } = await supabase
+      .from("members")
+      .select("id, approved")
+      .eq("email", user.email)
+      .maybeSingle();
+
+    if (member?.approved) {
+      router.push("/");
+    }
+  }
+
+  useEffect(() => {
+    checkApproval();
+
+    const unsubscribe = subscribeToTables(
+      "pending-page-live",
+      ["members", "member_requests"],
+      () => {
+        checkApproval();
+      }
+    );
+
+    return unsubscribe;
+  }, []);
+
   async function logout() {
     await supabase.auth.signOut();
     window.location.href = "/login";

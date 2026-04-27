@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import UserMenu from "@/components/UserMenu";
 import { supabase } from "@/lib/supabase";
+import { subscribeToTables } from "@/lib/realtimeRefresh";
 
 const POINTS_MAP = {
   1: 25,
