@@ -4,9 +4,12 @@ import React, { useEffect, useState } from "react";
 import UserMenu from "@/components/UserMenu";
 import { getUserStatus } from "@/lib/getUserStatus";
 import { supabase } from "@/lib/supabase";
+import { usePresence } from "@/lib/usePresence";
 
 export default function Home() {
   const [isApprovedMember, setIsApprovedMember] = useState(false);
+
+  usePresence();
 
   const [settings, setSettings] = useState({
     home_title: "Victory from the shadows.",
@@ -98,12 +101,12 @@ export default function Home() {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-zinc-950 text-white">
+    <main className="page-fade relative min-h-screen overflow-hidden bg-zinc-950 text-white">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(220,38,38,0.4),transparent_40%),radial-gradient(circle_at_80%_0%,rgba(220,38,38,0.3),transparent_40%)] opacity-30" />
 
       <section className="relative border-b border-red-950 bg-black/80 backdrop-blur">
         <div className="mx-auto max-w-7xl px-6 py-6">
-          <header className="rounded-3xl border border-zinc-900 bg-black/70 p-4 shadow-2xl shadow-red-950/20 backdrop-blur-xl">
+          <header className="rounded-3xl border border-zinc-900 bg-black/70 p-4 shadow-2xl shadow-red-950/30 backdrop-blur-xl transition hover:border-red-900">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
               <a href="/" className="flex items-center gap-4">
                 <div className="grid h-14 w-14 place-items-center rounded-2xl border border-red-800 bg-black shadow-lg shadow-red-950/40">
@@ -148,14 +151,14 @@ export default function Home() {
                     <a
                       href="https://robertsspaceindustries.com/en/orgs/UCOR"
                       target="_blank"
-                      className="rounded-2xl bg-red-700 px-8 py-4 font-black shadow-lg shadow-red-950/40 hover:bg-red-600"
+                      className="rounded-2xl bg-red-700 px-8 py-4 font-black shadow-lg shadow-red-950/40 transition hover:bg-red-600 active:scale-95"
                     >
                       Apply on RSI
                     </a>
 
                     <a
                       href="/request-access"
-                      className="rounded-2xl border border-red-800 px-8 py-4 font-black hover:bg-red-950/30"
+                      className="rounded-2xl border border-red-800 px-8 py-4 font-black transition hover:bg-red-950/30 active:scale-95"
                     >
                       Request Access
                     </a>
@@ -164,7 +167,7 @@ export default function Home() {
 
                 <a
                   href="/about"
-                  className="rounded-2xl border border-zinc-700 px-8 py-4 font-black hover:border-red-900 hover:bg-zinc-900"
+                  className="rounded-2xl border border-zinc-700 px-8 py-4 font-black transition hover:border-red-900 hover:bg-zinc-900 active:scale-95"
                 >
                   Learn More
                 </a>
@@ -177,7 +180,7 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="rounded-3xl border border-red-900 bg-black/60 p-6 shadow-2xl shadow-red-950/40">
+            <div className="rounded-3xl border border-red-900 bg-black/60 p-6 shadow-2xl shadow-red-950/40 transition hover:border-red-700">
               <h2 className="mb-4 text-2xl font-black">
                 Umbra Command Broadcast
               </h2>
@@ -203,7 +206,7 @@ export default function Home() {
 
 function StatCard({ label, value }) {
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-black/60 p-4 text-center">
+    <div className="rounded-2xl border border-zinc-800 bg-black/60 p-4 text-center shadow-xl shadow-red-950/10 transition hover:border-red-900 hover:scale-[1.02]">
       <p className="text-xs uppercase tracking-[0.25em] text-zinc-500">
         {label}
       </p>
