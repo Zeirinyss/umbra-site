@@ -1,9 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import UserMenu from "@/components/UserMenu";
-import { supabase } from "@/lib/supabase";
-import { getUserStatus } from "@/lib/getUserStatus";
 
 const EVENT_TYPES = [
   { value: "operation", label: "Operation" },
@@ -23,11 +20,13 @@ const blankEventForm = {
 };
 
 export default function ControlRoomPage() {
-  const [user, setUser] = useState(null);
-  const [member, setMember] = useState(null);
-  const [role, setRole] = useState(null);
-  const [status, setStatus] = useState("loading");
-  const [message, setMessage] = useState("Loading control room...");
+  const [unlocked, setUnlocked] = useState(false);
+  const [code, setCode] = useState("");
+  const [savedCode, setSavedCode] = useState("");
+  const [unlockMessage, setUnlockMessage] = useState("");
+
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const [events, setEvents] = useState([]);
   const [members, setMembers] = useState([]);
@@ -35,60 +34,92 @@ export default function ControlRoomPage() {
   const [eventForm, setEventForm] = useState(blankEventForm);
   const [editingEventId, setEditingEventId] = useState(null);
 
-  const isAdmin = !!role;
-
   useEffect(() => {
-    loadPage();
+    const stored = localStorage.getItem("umbra_control_room_code");
+
+    if (stored) {
+      setSavedCode(stored);
+      setUnlocked(true);
+      loadData(stored);
+    }
   }, []);
 
-  async function loadPage() {
-    const userStatus = await getUserStatus();
+  async function unlockControlRoom(event) {
+    event.preventDefault();
+    setUnlockMessage("");
 
-    setUser(userStatus.user || null);
-    setMember(userStatus.member || null);
-    setRole(userStatus.role || null);
-    setStatus(userStatus.status || "guest");
+    const response = await fetch("/api/control-room/verify", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ code }),
+    });
 
-    if (!userStatus.user) {
-      setMessage("You must be logged in.");
+    const data = await response.json();
+
+    if (!response.ok) {
+      setUnlockMessage(data.error || "Invalid code.");
       return;
     }
 
-    if (!userStatus.role) {
-      setMessage("Admin access required.");
-      return;
+    localStorage.setItem("umbra_control_room_code", code);
+    setSavedCode(code);
+    setUnlocked(true);
+    await loadData(code);
+  }
+
+  function lockControlRoom() {
+    localStorage.removeItem("umbra_control_room_code");
+    setUnlocked(false);
+    setSavedCode("");
+    setCode("");
+    setEvents([]);
+    setMembers([]);
+  }
+
+  async function apiFetch(url, options = {}, overrideCode = null) {
+    const activeCode = overrideCode || savedCode;
+
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        "x-control-room-code": activeCode,
+        ...(options.headers || {}),
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "Request failed.");
     }
 
-    await Promise.all([fetchEvents(), fetchMembers()]);
+    return data;
+  }
+
+  async function loadData(activeCode = savedCode) {
+    setLoading(true);
     setMessage("");
-  }
 
-  async function fetchEvents() {
-    const { data, error } = await supabase
-      .from("events")
-      .select("*")
-      .order("start_time", { ascending: true });
-
-    if (error) {
+    try {
+      await Promise.all([fetchEvents(activeCode), fetchMembers(activeCode)]);
+    } catch (error) {
       setMessage(error.message);
-      return;
     }
 
-    setEvents(data || []);
+    setLoading(false);
   }
 
-  async function fetchMembers() {
-    const { data, error } = await supabase
-      .from("members")
-      .select("*")
-      .order("rsi_handle", { ascending: true });
+  async function fetchEvents(activeCode = savedCode) {
+    const data = await apiFetch("/api/control-room/events", {}, activeCode);
+    setEvents(data.events || []);
+  }
 
-    if (error) {
-      setMessage(error.message);
-      return;
-    }
-
-    setMembers(data || []);
+  async function fetchMembers(activeCode = savedCode) {
+    const data = await apiFetch("/api/control-room/members", {}, activeCode);
+    setMembers(data.members || []);
   }
 
   function updateEventForm(field, value) {
@@ -155,110 +186,154 @@ export default function ControlRoomPage() {
       event_type: eventForm.event_type,
       start_time: new Date(eventForm.start_time).toISOString(),
       end_time: new Date(eventForm.end_time).toISOString(),
-      discord_sent: false,
     };
 
-    let error;
+    try {
+      if (editingEventId) {
+        await apiFetch("/api/control-room/events", {
+          method: "PATCH",
+          body: JSON.stringify({
+            id: editingEventId,
+            ...payload,
+          }),
+        });
 
-    if (editingEventId) {
-      const result = await supabase
-        .from("events")
-        .update(payload)
-        .eq("id", editingEventId);
+        setMessage("Event updated.");
+      } else {
+        await apiFetch("/api/control-room/events", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
 
-      error = result.error;
-    } else {
-      const result = await supabase.from("events").insert({
-        ...payload,
-        created_by: user.id,
-      });
+        setMessage("Event created.");
+      }
 
-      error = result.error;
-    }
-
-    if (error) {
+      setEventForm(blankEventForm);
+      setEditingEventId(null);
+      await fetchEvents();
+    } catch (error) {
       setMessage(error.message);
-      return;
     }
-
-    setEventForm(blankEventForm);
-    setEditingEventId(null);
-    await fetchEvents();
-    setMessage(editingEventId ? "Event updated." : "Event created.");
   }
 
   async function deleteEvent(id, title) {
     if (!confirm(`Delete "${title}"?`)) return;
 
-    const { error } = await supabase.from("events").delete().eq("id", id);
+    try {
+      await apiFetch("/api/control-room/events", {
+        method: "DELETE",
+        body: JSON.stringify({ id }),
+      });
 
-    if (error) {
+      await fetchEvents();
+      setMessage("Event deleted.");
+    } catch (error) {
       setMessage(error.message);
-      return;
     }
-
-    await fetchEvents();
-    setMessage("Event deleted.");
   }
 
   async function updateMember(memberId, updates) {
-    const { error } = await supabase
-      .from("members")
-      .update(updates)
-      .eq("id", memberId);
+    try {
+      await apiFetch("/api/control-room/members", {
+        method: "PATCH",
+        body: JSON.stringify({
+          id: memberId,
+          updates,
+        }),
+      });
 
-    if (error) {
+      await fetchMembers();
+      setMessage("Member updated.");
+    } catch (error) {
       setMessage(error.message);
-      return;
     }
-
-    await fetchMembers();
-    setMessage("Member updated.");
   }
 
   async function deleteMember(memberId, handle) {
     if (!confirm(`Delete member "${handle}"?`)) return;
 
-    const { error } = await supabase.from("members").delete().eq("id", memberId);
+    try {
+      await apiFetch("/api/control-room/members", {
+        method: "DELETE",
+        body: JSON.stringify({ id: memberId }),
+      });
 
-    if (error) {
+      await fetchMembers();
+      setMessage("Member deleted.");
+    } catch (error) {
       setMessage(error.message);
-      return;
     }
-
-    await fetchMembers();
-    setMessage("Member deleted.");
   }
 
-  if (status === "loading") {
+  if (!unlocked) {
     return (
-      <main className="min-h-screen bg-zinc-950 text-white">
-        <Header />
-        <section className="mx-auto max-w-5xl px-4 py-10">
-          <p className="text-zinc-400">{message}</p>
-        </section>
-      </main>
-    );
-  }
+      <main className="flex min-h-screen items-center justify-center bg-zinc-950 px-6 text-white">
+        <form
+          onSubmit={unlockControlRoom}
+          className="w-full max-w-md rounded-3xl border border-red-950 bg-black/70 p-8 shadow-2xl shadow-red-950/30"
+        >
+          <p className="text-sm font-black uppercase tracking-[0.3em] text-red-500">
+            Umbra Control Room
+          </p>
 
-  if (!user || !isAdmin) {
-    return (
-      <main className="min-h-screen bg-zinc-950 text-white">
-        <Header />
+          <h1 className="mt-4 text-4xl font-black">Access Code</h1>
 
-        <section className="mx-auto max-w-xl px-4 py-16 text-center">
-          <div className="rounded-3xl border border-red-900 bg-black/60 p-8">
-            <h1 className="text-3xl font-black">Access Denied</h1>
-            <p className="mt-4 text-zinc-400">{message}</p>
-          </div>
-        </section>
+          <p className="mt-3 text-zinc-400">
+            Enter the control room code to continue.
+          </p>
+
+          {unlockMessage && (
+            <div className="mt-5 rounded-xl border border-red-900 bg-red-950/30 p-4 text-sm text-red-200">
+              {unlockMessage}
+            </div>
+          )}
+
+          <input
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            placeholder="Enter code"
+            className="mt-6 w-full rounded-xl border border-zinc-800 bg-zinc-950 p-4 text-center text-2xl font-black tracking-widest outline-none focus:border-red-700"
+          />
+
+          <button className="mt-5 w-full rounded-xl bg-red-700 p-4 font-black hover:bg-red-600">
+            Unlock Control Room
+          </button>
+        </form>
       </main>
     );
   }
 
   return (
     <main className="min-h-screen bg-zinc-950 text-white">
-      <Header />
+      <header className="border-b border-red-950 bg-black px-4 py-5">
+        <div className="mx-auto flex max-w-5xl flex-col gap-4 rounded-3xl border border-zinc-900 bg-black/70 p-4 shadow-2xl shadow-red-950/10 backdrop-blur-xl">
+          <div className="flex items-center justify-between gap-4">
+            <a href="/" className="flex items-center gap-4">
+              <div className="grid h-12 w-12 place-items-center rounded-2xl border border-red-800 bg-black shadow-lg shadow-red-950/30">
+                <img
+                  src="/logo.png"
+                  alt="Umbra Logo"
+                  className="h-9 w-9 object-contain"
+                />
+              </div>
+
+              <div>
+                <p className="text-xl font-black tracking-[0.25em]">UMBRA</p>
+                <p className="text-xs font-bold uppercase tracking-[0.35em] text-red-500">
+                  Control Room
+                </p>
+              </div>
+            </a>
+
+            <button
+              onClick={lockControlRoom}
+              className="rounded-xl border border-zinc-800 px-4 py-2 text-sm font-bold text-zinc-300 hover:bg-zinc-900"
+            >
+              Lock
+            </button>
+          </div>
+        </div>
+      </header>
 
       <section className="border-b border-red-950/70 bg-gradient-to-b from-red-950/30 to-black px-4 py-10">
         <div className="mx-auto max-w-5xl">
@@ -271,21 +346,15 @@ export default function ControlRoomPage() {
           </h1>
 
           <p className="mt-3 text-zinc-400">
-            Mobile-friendly admin controls for events and members.
+            Code-protected controls for events and members.
           </p>
-
-          {member && (
-            <p className="mt-3 text-sm text-red-400">
-              Signed in as {member.rsi_handle}
-            </p>
-          )}
         </div>
       </section>
 
-      {message && (
+      {(message || loading) && (
         <div className="mx-auto mt-5 max-w-5xl px-4">
           <div className="rounded-xl border border-red-900 bg-red-950/30 p-4 text-sm text-red-200">
-            {message}
+            {loading ? "Loading..." : message}
           </div>
         </div>
       )}
@@ -496,7 +565,10 @@ export default function ControlRoomPage() {
 
                       <button
                         onClick={() =>
-                          deleteMember(member.id, member.rsi_handle || member.email)
+                          deleteMember(
+                            member.id,
+                            member.rsi_handle || member.email
+                          )
                         }
                         className="rounded-xl border border-red-900 bg-red-950/30 px-4 py-2 text-sm font-bold text-red-200 hover:bg-red-900/50"
                       >
@@ -515,32 +587,5 @@ export default function ControlRoomPage() {
         © 2955 Umbra Corporation / UCOR — Control Room
       </footer>
     </main>
-  );
-}
-
-function Header() {
-  return (
-    <header className="border-b border-red-950 bg-black px-4 py-5">
-      <div className="mx-auto flex max-w-5xl flex-col gap-4 rounded-3xl border border-zinc-900 bg-black/70 p-4 shadow-2xl shadow-red-950/10 backdrop-blur-xl">
-        <a href="/" className="flex items-center gap-4">
-          <div className="grid h-12 w-12 place-items-center rounded-2xl border border-red-800 bg-black shadow-lg shadow-red-950/30">
-            <img
-              src="/logo.png"
-              alt="Umbra Logo"
-              className="h-9 w-9 object-contain"
-            />
-          </div>
-
-          <div>
-            <p className="text-xl font-black tracking-[0.25em]">UMBRA</p>
-            <p className="text-xs font-bold uppercase tracking-[0.35em] text-red-500">
-              Control Room
-            </p>
-          </div>
-        </a>
-
-        <UserMenu />
-      </div>
-    </header>
   );
 }
