@@ -31,6 +31,8 @@ export default function FleetPage() {
   const [message, setMessage] = useState("Checking access...");
 
   const [roleFilter, setRoleFilter] = useState("All");
+  const [typeFilter, setTypeFilter] = useState("All");
+  const [catalogTypeFilter, setCatalogTypeFilter] = useState("All");
   const [search, setSearch] = useState("");
   const [selectedManufacturer, setSelectedManufacturer] = useState("");
   const [showRoleBreakdown, setShowRoleBreakdown] = useState(false);
@@ -53,19 +55,19 @@ export default function FleetPage() {
   });
 
   useEffect(() => {
-  loadPage();
+    loadPage();
 
-  const unsubscribe = subscribeToTables(
-    "fleet-live",
-    ["fleet", "ship_catalog", "members"],
-    () => {
-      fetchShips();
-      fetchShipCatalog();
-    }
-  );
+    const unsubscribe = subscribeToTables(
+      "fleet-live",
+      ["fleet", "ship_catalog", "members"],
+      () => {
+        fetchShips();
+        fetchShipCatalog();
+      }
+    );
 
-  return unsubscribe;
-}, []);
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
     if (!message || message === "Checking access...") return;
@@ -84,24 +86,44 @@ export default function FleetPage() {
     };
   }, [editingShip]);
 
+  function getShipType(shipName) {
+    const catalogShip = shipCatalog.find(
+      (catalogShip) => catalogShip.ship_name === shipName
+    );
+
+    return String(catalogShip?.type || "ship").toLowerCase();
+  }
+
+  function matchesCatalogType(ship) {
+    const type = String(ship.type || "ship").toLowerCase();
+
+    if (catalogTypeFilter === "All") return true;
+    if (catalogTypeFilter === "Ships") return type !== "ground";
+    if (catalogTypeFilter === "Ground Vehicles") return type === "ground";
+
+    return true;
+  }
+
   const manufacturers = useMemo(() => {
     return [
       ...new Set(
         shipCatalog
+          .filter(matchesCatalogType)
           .map((ship) => ship.manufacturer)
           .filter(Boolean)
           .sort()
       ),
     ];
-  }, [shipCatalog]);
+  }, [shipCatalog, catalogTypeFilter]);
 
   const availableShips = useMemo(() => {
     if (!selectedManufacturer) return [];
 
     return shipCatalog
       .filter((ship) => ship.manufacturer === selectedManufacturer)
+      .filter(matchesCatalogType)
       .sort((a, b) => a.ship_name.localeCompare(b.ship_name));
-  }, [shipCatalog, selectedManufacturer]);
+  }, [shipCatalog, selectedManufacturer, catalogTypeFilter]);
 
   const selectedCatalogShip = useMemo(() => {
     return shipCatalog.find(
@@ -116,6 +138,22 @@ export default function FleetPage() {
   const totalShips = useMemo(
     () => ships.reduce((total, ship) => total + Number(ship.quantity || 0), 0),
     [ships]
+  );
+
+  const totalRealShips = useMemo(
+    () =>
+      ships
+        .filter((ship) => getShipType(ship.ship_name) !== "ground")
+        .reduce((total, ship) => total + Number(ship.quantity || 0), 0),
+    [ships, shipCatalog]
+  );
+
+  const totalGroundVehicles = useMemo(
+    () =>
+      ships
+        .filter((ship) => getShipType(ship.ship_name) === "ground")
+        .reduce((total, ship) => total + Number(ship.quantity || 0), 0),
+    [ships, shipCatalog]
   );
 
   const namedShips = useMemo(
@@ -160,6 +198,13 @@ export default function FleetPage() {
         const normalizedShipRole = normalizeRole(ship.role);
         const normalizedFilterRole = normalizeRole(roleFilter);
 
+        const shipType = getShipType(ship.ship_name);
+
+        const matchesType =
+          typeFilter === "All" ||
+          (typeFilter === "Ships" && shipType !== "ground") ||
+          (typeFilter === "Ground Vehicles" && shipType === "ground");
+
         const matchesRole =
           roleFilter === "All" || normalizedShipRole === normalizedFilterRole;
 
@@ -168,12 +213,12 @@ export default function FleetPage() {
           ship.custom_ship_name?.toLowerCase().includes(query) ||
           ship.rsi_handle?.toLowerCase().includes(query);
 
-        return matchesRole && matchesSearch;
+        return matchesType && matchesRole && matchesSearch;
       })
       .sort((a, b) =>
         String(a.ship_name || "").localeCompare(String(b.ship_name || ""))
       );
-  }, [ships, roleFilter, search]);
+  }, [ships, shipCatalog, roleFilter, typeFilter, search]);
 
   async function loadPage() {
     setMessage("Checking access...");
@@ -222,7 +267,7 @@ export default function FleetPage() {
   async function fetchShipCatalog() {
     const { data, error } = await supabase
       .from("ship_catalog")
-      .select("ship_name, manufacturer, role, naming_license, image_url")
+      .select("ship_name, manufacturer, role, naming_license, image_url, type")
       .order("manufacturer", { ascending: true });
 
     if (error) {
@@ -253,6 +298,18 @@ export default function FleetPage() {
 
   function updateEditForm(field, value) {
     setEditForm((current) => ({ ...current, [field]: value }));
+  }
+
+  function handleCatalogTypeChange(value) {
+    setCatalogTypeFilter(value);
+    setSelectedManufacturer("");
+
+    setForm((current) => ({
+      ...current,
+      ship_name: "",
+      custom_ship_name: "",
+      role: "",
+    }));
   }
 
   function handleManufacturerChange(value) {
@@ -338,8 +395,6 @@ export default function FleetPage() {
     }
 
     setMessage("Ship added successfully.");
-
-    setSelectedManufacturer("");
 
     setForm({
       ship_name: "",
@@ -544,10 +599,10 @@ export default function FleetPage() {
           </div>
 
           <div className="mt-10 grid gap-4 md:grid-cols-4">
-            <StatCard label="Total Ships" value={totalShips} />
-            <StatCard label="Named Ships" value={namedShips} />
+            <StatCard label="Total Fleet" value={totalShips} />
+            <StatCard label="Ships" value={totalRealShips} />
+            <StatCard label="Ground Vehicles" value={totalGroundVehicles} />
             <StatCard label="Members Contributing" value={totalOwners} />
-            <StatCard label="Fleet Roles" value={roles.length - 1} />
           </div>
 
           {roleBreakdown.length > 0 && (
@@ -606,6 +661,16 @@ export default function FleetPage() {
           )}
 
           <div className="mt-6 grid gap-4">
+            <select
+              value={catalogTypeFilter}
+              onChange={(e) => handleCatalogTypeChange(e.target.value)}
+              className="rounded-xl border border-zinc-800 bg-zinc-950 p-3 outline-none focus:border-red-700"
+            >
+              <option>All</option>
+              <option>Ships</option>
+              <option>Ground Vehicles</option>
+            </select>
+
             <select
               value={selectedManufacturer}
               onChange={(e) => handleManufacturerChange(e.target.value)}
@@ -726,7 +791,7 @@ export default function FleetPage() {
         </form>
 
         <div>
-          <div className="mb-6 grid gap-4 md:grid-cols-[1fr_auto_auto] md:items-center">
+          <div className="mb-6 grid gap-4 md:grid-cols-[1fr_auto_auto_auto] md:items-center">
             <div>
               <h2 className="text-3xl font-black">Fleet Registry</h2>
               <p className="mt-1 text-sm text-zinc-500">
@@ -740,6 +805,16 @@ export default function FleetPage() {
               onChange={(e) => setSearch(e.target.value)}
               className="rounded-xl border border-zinc-800 bg-black p-3 outline-none focus:border-red-700"
             />
+
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              className="rounded-xl border border-zinc-800 bg-black p-3 outline-none focus:border-red-700"
+            >
+              <option>All</option>
+              <option>Ships</option>
+              <option>Ground Vehicles</option>
+            </select>
 
             <select
               value={roleFilter}
@@ -813,6 +888,12 @@ export default function FleetPage() {
                           Named Ship
                         </span>
                       )}
+
+                      <span className="rounded-full bg-zinc-900 px-3 py-1 text-sm text-zinc-300">
+                        {getShipType(ship.ship_name) === "ground"
+                          ? "Ground Vehicle"
+                          : "Ship"}
+                      </span>
 
                       <span className="rounded-full bg-zinc-900 px-3 py-1 text-sm text-zinc-300">
                         {normalizeRole(ship.role)}
