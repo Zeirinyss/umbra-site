@@ -67,7 +67,7 @@ export default function MyFleetPage() {
       .from("fleet")
       .select("*")
       .eq("user_id", currentUser.id)
-      .order("created_at", { ascending: true });
+      .order("ship_name", { ascending: true });
 
     if (error) {
       setMessage(error.message);
