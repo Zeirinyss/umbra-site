@@ -30,6 +30,7 @@ export default function ControlRoomPage() {
 
   const [events, setEvents] = useState([]);
   const [members, setMembers] = useState([]);
+  const [requests, setRequests] = useState([]);
 
   const [eventForm, setEventForm] = useState(blankEventForm);
   const [editingEventId, setEditingEventId] = useState(null);
@@ -76,6 +77,7 @@ export default function ControlRoomPage() {
     setCode("");
     setEvents([]);
     setMembers([]);
+    setRequests([]);
   }
 
   async function apiFetch(url, options = {}, overrideCode = null) {
@@ -104,7 +106,11 @@ export default function ControlRoomPage() {
     setMessage("");
 
     try {
-      await Promise.all([fetchEvents(activeCode), fetchMembers(activeCode)]);
+      await Promise.all([
+        fetchEvents(activeCode),
+        fetchMembers(activeCode),
+        fetchRequests(activeCode),
+      ]);
     } catch (error) {
       setMessage(error.message);
     }
@@ -120,6 +126,16 @@ export default function ControlRoomPage() {
   async function fetchMembers(activeCode = savedCode) {
     const data = await apiFetch("/api/control-room/members", {}, activeCode);
     setMembers(data.members || []);
+  }
+
+  async function fetchRequests(activeCode = savedCode) {
+    const data = await apiFetch(
+      "/api/control-room/member-requests",
+      {},
+      activeCode
+    );
+
+    setRequests(data.requests || []);
   }
 
   function updateEventForm(field, value) {
@@ -227,6 +243,32 @@ export default function ControlRoomPage() {
 
       await fetchEvents();
       setMessage("Event deleted.");
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }
+
+  async function approveRequest(request) {
+    if (!confirm(`Accept "${request.rsi_handle || request.email}" as a member?`)) {
+      return;
+    }
+
+    try {
+      await apiFetch("/api/control-room/member-requests", {
+        method: "POST",
+        body: JSON.stringify({
+          requestId: request.id,
+          email: request.email,
+          rsi_handle: request.rsi_handle,
+          discord: request.discord,
+          division: request.division,
+          user_id: request.user_id,
+        }),
+      });
+
+      await fetchRequests();
+      await fetchMembers();
+      setMessage("Member accepted.");
     } catch (error) {
       setMessage(error.message);
     }
@@ -346,7 +388,7 @@ export default function ControlRoomPage() {
           </h1>
 
           <p className="mt-3 text-zinc-400">
-            Code-protected controls for events and members.
+            Code-protected controls for events, requests, and members.
           </p>
         </div>
       </section>
@@ -441,6 +483,54 @@ export default function ControlRoomPage() {
             )}
           </div>
         </form>
+
+        <section className="rounded-3xl border border-zinc-800 bg-black/60 p-5">
+          <p className="text-sm font-black uppercase tracking-[0.25em] text-red-500">
+            Access Requests
+          </p>
+
+          <h2 className="mt-2 text-3xl font-black">Pending Approval</h2>
+
+          <div className="mt-6 grid gap-4">
+            {requests.length === 0 ? (
+              <p className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4 text-zinc-400">
+                No pending requests.
+              </p>
+            ) : (
+              requests.map((request) => (
+                <article
+                  key={request.id}
+                  className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
+                >
+                  <h3 className="text-xl font-black">
+                    {request.rsi_handle || "Unnamed Request"}
+                  </h3>
+
+                  <p className="mt-1 text-sm text-zinc-500">{request.email}</p>
+
+                  <p className="mt-2 text-sm text-zinc-400">
+                    Discord: {request.discord || "N/A"}
+                  </p>
+
+                  <p className="mt-1 text-sm text-zinc-400">
+                    Division: {request.division || "N/A"}
+                  </p>
+
+                  <p className="mt-1 text-sm text-red-400">
+                    Status: {request.status || "pending"}
+                  </p>
+
+                  <button
+                    onClick={() => approveRequest(request)}
+                    className="mt-4 w-full rounded-xl bg-green-700 px-4 py-2 text-sm font-bold text-white hover:bg-green-600"
+                  >
+                    Accept Member
+                  </button>
+                </article>
+              ))
+            )}
+          </div>
+        </section>
 
         <section className="rounded-3xl border border-zinc-800 bg-black/60 p-5">
           <p className="text-sm font-black uppercase tracking-[0.25em] text-red-500">

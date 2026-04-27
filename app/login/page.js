@@ -22,21 +22,7 @@ export default function LoginPage() {
     if (error) {
       setMessage(error.message);
     } else {
-      // ✅ Redirect to homepage
       router.push("/");
-    }
-  }
-
-  async function handleSignup() {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-
-    if (error) {
-      setMessage(error.message);
-    } else {
-      setMessage("Account created. You can now log in.");
     }
   }
 
@@ -48,7 +34,7 @@ export default function LoginPage() {
         <input
           type="email"
           placeholder="Email"
-          className="w-full rounded-lg border border-zinc-700 bg-black p-2 outline-none focus:border-red-700"
+          className="w-full rounded-lg border border-zinc-700 bg-black p-2"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
@@ -56,21 +42,21 @@ export default function LoginPage() {
         <input
           type="password"
           placeholder="Password"
-          className="w-full rounded-lg border border-zinc-700 bg-black p-2 outline-none focus:border-red-700"
+          className="w-full rounded-lg border border-zinc-700 bg-black p-2"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
 
         <button
           onClick={handleLogin}
-          className="w-full rounded-lg bg-red-600 p-2 font-bold hover:bg-red-500"
+          className="w-full rounded-lg bg-red-600 p-2 font-bold"
         >
           Login
         </button>
 
         <button
-          onClick={handleSignup}
-          className="w-full rounded-lg bg-zinc-700 p-2 font-bold hover:bg-zinc-600"
+          onClick={() => router.push("/create-account")}
+          className="w-full rounded-lg bg-zinc-700 p-2 font-bold"
         >
           Create Account
         </button>
