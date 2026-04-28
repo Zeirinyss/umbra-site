@@ -10,6 +10,7 @@ export default function UserMenu() {
   const [role, setRole] = useState(null);
   const [status, setStatus] = useState("guest");
   const [open, setOpen] = useState(false);
+ 
 
   const dropdownRef = useRef();
 
@@ -42,7 +43,6 @@ export default function UserMenu() {
     window.location.href = "/";
   }
 
-  // GUEST
   if (!user) {
     return (
       <div className="flex items-center gap-4 text-sm font-bold text-zinc-300">
@@ -55,7 +55,6 @@ export default function UserMenu() {
     );
   }
 
-  // PENDING
   if (status === "pending") {
     return (
       <div className="flex items-center gap-4 text-sm font-bold text-zinc-300">
@@ -65,11 +64,8 @@ export default function UserMenu() {
     );
   }
 
-  // APPROVED
   return (
     <div className="flex items-center gap-4 text-sm font-bold text-zinc-300">
-
-      {/* MAIN NAV */}
       <a href="/about" className="hover:text-red-400">About</a>
       <a href="/leadership" className="hover:text-red-400">Leadership</a>
       <a href="/divisions" className="hover:text-red-400">Divisions</a>
@@ -81,8 +77,14 @@ export default function UserMenu() {
       <a href="/members" className="hover:text-red-400">Members</a>
       <a href="/fleet" className="hover:text-red-400">Fleet</a>
       <a href="/suggestions" className="hover:text-red-400">Suggestions</a>
-
-      {/* USER DROPDOWN */}
+      <a
+  href="https://umbracorp-shop.fourthwall.com/"
+  target="_blank"
+  rel="noopener noreferrer"
+  className="hover:text-red-400"
+>
+  Store
+</a>
       <div className="relative" ref={dropdownRef}>
         <button
           onClick={() => setOpen(!open)}
@@ -92,8 +94,7 @@ export default function UserMenu() {
         </button>
 
         {open && (
-          <div className="absolute right-0 mt-2 w-52 rounded-xl border border-zinc-800 bg-black shadow-xl">
-
+          <div className="absolute right-0 z-50 mt-2 w-64 rounded-xl border border-zinc-800 bg-black shadow-xl">
             <a
               href={member?.id ? `/members/${member.id}` : "/pending"}
               className="block px-4 py-2 hover:bg-zinc-900"
@@ -115,7 +116,6 @@ export default function UserMenu() {
               Org Funds
             </a>
 
-            {/* 🔥 SITE SETTINGS */}
             {role && (
               <a
                 href="/admin/site-settings"
@@ -125,7 +125,6 @@ export default function UserMenu() {
               </a>
             )}
 
-            {/* 🔥 NEW: LEADERSHIP EDITOR */}
             {role && (
               <a
                 href="/admin/leadership"
