@@ -168,6 +168,15 @@ export default function Home() {
                   Learn More
                 </a>
 
+                <a
+                  href="https://discord.gg/UNhDdUVCAb"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-2xl border border-indigo-700 bg-indigo-900/30 px-8 py-4 font-black text-indigo-300 transition hover:bg-indigo-800/40 active:scale-95"
+                >
+                  Join Discord
+                </a>
+
                 <button
                   onClick={() => setShowAppModal(true)}
                   className="rounded-2xl border border-green-800 px-8 py-4 font-black text-green-300 transition hover:bg-green-950/30 active:scale-95"

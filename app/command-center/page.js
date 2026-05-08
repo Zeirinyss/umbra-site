@@ -13,6 +13,8 @@ export default function CommandCenterPage() {
   const [status, setStatus] = useState("loading");
 
   const [posts, setPosts] = useState([]);
+  const [comments, setComments] = useState({});
+  const [commentInputs, setCommentInputs] = useState({});
   const [message, setMessage] = useState("Loading command center...");
 
   const [title, setTitle] = useState("");
@@ -22,18 +24,19 @@ export default function CommandCenterPage() {
   const canPost = !!role;
 
   useEffect(() => {
-  loadPage();
+    loadPage();
 
-  const unsubscribe = subscribeToTables(
-    "command-center-live",
-    ["command_posts"],
-    () => {
-      fetchPosts();
-    }
-  );
+    const unsubscribe = subscribeToTables(
+      "command-center-live",
+      ["command_posts", "command_post_comments"],
+      () => {
+        fetchPosts();
+        fetchComments();
+      }
+    );
 
-  return unsubscribe;
-}, []);
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
     if (status !== "approved") return;
@@ -49,6 +52,24 @@ export default function CommandCenterPage() {
         },
         (payload) => {
           setPosts((current) => [payload.new, ...current]);
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "command_post_comments",
+        },
+        (payload) => {
+          setComments((current) => {
+            const postId = payload.new.post_id;
+
+            return {
+              ...current,
+              [postId]: [...(current[postId] || []), payload.new],
+            };
+          });
         }
       )
       .subscribe();
@@ -79,6 +100,7 @@ export default function CommandCenterPage() {
     }
 
     await fetchPosts();
+    await fetchComments();
   }
 
   async function fetchPosts() {
@@ -95,6 +117,27 @@ export default function CommandCenterPage() {
 
     setPosts(data || []);
     setMessage("");
+  }
+
+  async function fetchComments() {
+    const { data, error } = await supabase
+      .from("command_post_comments")
+      .select("*")
+      .order("created_at", { ascending: true });
+
+    if (error) return;
+
+    const grouped = {};
+
+    data.forEach((comment) => {
+      if (!grouped[comment.post_id]) {
+        grouped[comment.post_id] = [];
+      }
+
+      grouped[comment.post_id].push(comment);
+    });
+
+    setComments(grouped);
   }
 
   async function createPost(event) {
@@ -130,6 +173,31 @@ export default function CommandCenterPage() {
     setTitle("");
     setContent("");
     setPosting(false);
+  }
+
+  async function postComment(postId) {
+    const text = commentInputs[postId];
+
+    if (!text?.trim()) return;
+
+    const { error } = await supabase.from("command_post_comments").insert([
+      {
+        post_id: postId,
+        user_id: user.id,
+        author: member?.rsi_handle || user.email,
+        comment: text.trim(),
+      },
+    ]);
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    setCommentInputs((current) => ({
+      ...current,
+      [postId]: "",
+    }));
   }
 
   if (status === "loading") {
@@ -176,13 +244,13 @@ export default function CommandCenterPage() {
     <main className="min-h-screen bg-zinc-950 text-white">
       <Header />
 
-      <section className="border-b border-red-950/70 bg-gradient-to-b from-red-950/30 to-black px-6 py-12">
+      <section className="border-b border-red-950/70 bg-gradient-to-b from-red-950/30 to-black px-4 py-10 sm:px-6 sm:py-12">
         <div className="mx-auto max-w-7xl">
           <p className="text-sm font-black uppercase tracking-[0.3em] text-red-500">
             Umbra Corporation
           </p>
 
-          <h1 className="mt-4 text-5xl font-black md:text-6xl">
+          <h1 className="mt-4 text-4xl font-black sm:text-5xl md:text-6xl">
             Command Center
           </h1>
 
@@ -199,7 +267,7 @@ export default function CommandCenterPage() {
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-7xl gap-8 px-6 py-10 lg:grid-cols-[0.8fr_1.2fr]">
+      <section className="mx-auto grid max-w-7xl gap-8 px-4 py-8 sm:px-6 sm:py-10 lg:grid-cols-[0.8fr_1.2fr]">
         <div className="space-y-6">
           <div className="rounded-3xl border border-red-950/80 bg-black/60 p-6 shadow-2xl shadow-red-950/10">
             <h2 className="text-2xl font-black">Command Access</h2>
@@ -278,7 +346,9 @@ export default function CommandCenterPage() {
         <div>
           <div className="mb-6 flex items-center justify-between gap-4">
             <div>
-              <h2 className="text-3xl font-black">Live Command Feed</h2>
+              <h2 className="text-2xl font-black sm:text-3xl">
+                Live Command Feed
+              </h2>
               <p className="mt-1 text-sm text-zinc-500">
                 Updates appear automatically while this page is open.
               </p>
@@ -298,7 +368,7 @@ export default function CommandCenterPage() {
               {posts.map((post) => (
                 <article
                   key={post.id}
-                  className="rounded-3xl border border-zinc-800 bg-black/60 p-6 transition hover:border-red-900"
+                  className="rounded-3xl border border-zinc-800 bg-black/60 p-4 transition hover:border-red-900 sm:p-6"
                 >
                   <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
                     <div>
@@ -306,7 +376,7 @@ export default function CommandCenterPage() {
                         Command Update
                       </p>
 
-                      <h3 className="mt-2 text-2xl font-black">
+                      <h3 className="mt-2 text-xl font-black sm:text-2xl">
                         {post.title}
                       </h3>
                     </div>
@@ -316,7 +386,7 @@ export default function CommandCenterPage() {
                     </p>
                   </div>
 
-                  <p className="mt-4 whitespace-pre-wrap leading-7 text-zinc-300">
+                  <p className="mt-4 whitespace-pre-wrap break-words leading-7 text-zinc-300">
                     {post.content}
                   </p>
 
@@ -326,6 +396,62 @@ export default function CommandCenterPage() {
                       {post.author || "Umbra Command"}
                     </span>
                   </p>
+
+                  <div className="mt-6 border-t border-zinc-900 pt-5">
+                    <h4 className="text-sm font-black uppercase tracking-[0.2em] text-zinc-500">
+                      Comments
+                    </h4>
+
+                    <div className="mt-4 space-y-3">
+                      {(comments[post.id] || []).length === 0 && (
+                        <p className="rounded-2xl border border-zinc-800 bg-zinc-950/40 p-4 text-sm text-zinc-500">
+                          No comments yet.
+                        </p>
+                      )}
+
+                      {(comments[post.id] || []).map((comment) => (
+                        <div
+                          key={comment.id}
+                          className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4"
+                        >
+                          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                            <p className="font-bold text-red-400">
+                              {comment.author || "Member"}
+                            </p>
+
+                            <p className="text-xs text-zinc-600">
+                              {new Date(comment.created_at).toLocaleString()}
+                            </p>
+                          </div>
+
+                          <p className="mt-2 whitespace-pre-wrap break-words text-zinc-300">
+                            {comment.comment}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+                      <input
+                        value={commentInputs[post.id] || ""}
+                        onChange={(e) =>
+                          setCommentInputs((current) => ({
+                            ...current,
+                            [post.id]: e.target.value,
+                          }))
+                        }
+                        placeholder="Write a comment..."
+                        className="min-w-0 flex-1 rounded-xl border border-zinc-800 bg-zinc-950 p-3 outline-none focus:border-red-700"
+                      />
+
+                      <button
+                        onClick={() => postComment(post.id)}
+                        className="rounded-xl bg-red-700 px-5 py-3 font-black hover:bg-red-600"
+                      >
+                        Comment
+                      </button>
+                    </div>
+                  </div>
                 </article>
               ))}
             </div>
@@ -342,7 +468,7 @@ export default function CommandCenterPage() {
 
 function Header() {
   return (
-    <header className="border-b border-red-950 bg-black px-6 py-6">
+    <header className="border-b border-red-950 bg-black px-4 py-4 sm:px-6 sm:py-6">
       <div className="mx-auto flex max-w-7xl flex-col gap-5 rounded-3xl border border-zinc-900 bg-black/70 p-4 shadow-2xl shadow-red-950/10 backdrop-blur-xl lg:flex-row lg:items-center lg:justify-between">
         <a href="/" className="flex items-center gap-4">
           <div className="grid h-14 w-14 place-items-center rounded-2xl border border-red-800 bg-black shadow-lg shadow-red-950/30">

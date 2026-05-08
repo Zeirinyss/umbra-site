@@ -10,7 +10,6 @@ export default function UserMenu() {
   const [role, setRole] = useState(null);
   const [status, setStatus] = useState("guest");
   const [open, setOpen] = useState(false);
- 
 
   const dropdownRef = useRef();
 
@@ -72,19 +71,39 @@ export default function UserMenu() {
 
       <div className="hidden h-5 w-px bg-zinc-700 md:block" />
 
-      <a href="/command-center" className="hover:text-red-400">Command Center</a>
-      <a href="/events" className="hover:text-red-400">Calendar</a>
-      <a href="/members" className="hover:text-red-400">Members</a>
-      <a href="/fleet" className="hover:text-red-400">Fleet</a>
-      <a href="/suggestions" className="hover:text-red-400">Suggestions</a>
+      <a href="/command-center" className="hover:text-red-400">
+        Command Center
+      </a>
+
+      <a href="/events" className="hover:text-red-400">
+        Calendar
+      </a>
+
+      <a href="/members" className="hover:text-red-400">
+        Members
+      </a>
+
+      <a href="/fleet" className="hover:text-red-400">
+        Fleet
+      </a>
+
+      <a href="/suggestions" className="hover:text-red-400">
+        Suggestions
+      </a>
+
+      <a href="/command-comms" className="hover:text-red-400">
+        Command Comms
+      </a>
+
       <a
-  href="https://umbracorp-shop.fourthwall.com/"
-  target="_blank"
-  rel="noopener noreferrer"
-  className="hover:text-red-400"
->
-  Store
-</a>
+        href="https://umbracorp-shop.fourthwall.com/"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="hover:text-red-400"
+      >
+        Store
+      </a>
+
       <div className="relative" ref={dropdownRef}>
         <button
           onClick={() => setOpen(!open)}
