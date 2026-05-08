@@ -28,7 +28,10 @@ export default function Home() {
 
   async function loadStatus() {
     const status = await getUserStatus();
-    setIsApprovedMember(status.status === "approved");
+
+    setIsApprovedMember(
+      !!status.user && status.status === "approved"
+    );
   }
 
   async function loadSettings() {
@@ -177,12 +180,14 @@ export default function Home() {
                   Join Discord
                 </a>
 
-                <button
-                  onClick={() => setShowAppModal(true)}
-                  className="rounded-2xl border border-green-800 px-8 py-4 font-black text-green-300 transition hover:bg-green-950/30 active:scale-95"
-                >
-                  Download Android App
-                </button>
+                {isApprovedMember && (
+                  <button
+                    onClick={() => setShowAppModal(true)}
+                    className="rounded-2xl border border-green-800 px-8 py-4 font-black text-green-300 transition hover:bg-green-950/30 active:scale-95"
+                  >
+                    Download Android App
+                  </button>
+                )}
               </div>
 
               <div className="mt-12 grid gap-4 sm:grid-cols-3">
@@ -213,7 +218,7 @@ export default function Home() {
         © 2955 Umbra Corporation / UCOR — Victoria ex Umbra
       </footer>
 
-      {showAppModal && (
+      {showAppModal && isApprovedMember && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4 backdrop-blur-sm">
           <div className="w-full max-w-lg rounded-3xl border border-red-900 bg-zinc-950 p-6 text-white shadow-2xl shadow-red-950/40">
             <h2 className="text-3xl font-black">Umbra Android App</h2>

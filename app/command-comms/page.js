@@ -23,26 +23,41 @@ export default function CommandCommsPage() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  useEffect(() => {
-    const channel = supabase
-      .channel("command-comms-live")
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "command_comms",
-        },
-        (payload) => {
-          setMessages((current) => [...current, payload.new]);
-        }
-      )
-      .subscribe();
+useEffect(() => {
+  if (status !== "approved") return;
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
+  const channel = supabase
+    .channel("command-comms-live")
+    .on(
+      "postgres_changes",
+      {
+        event: "INSERT",
+        schema: "public",
+        table: "command_comms",
+      },
+      (payload) => {
+        setMessages((current) => {
+          const exists = current.some(
+            (msg) => msg.id === payload.new.id
+          );
+
+          if (exists) return current;
+
+          return [...current, payload.new];
+        });
+      }
+    )
+    .subscribe((subscriptionStatus) => {
+      console.log(
+        "Command Comms realtime:",
+        subscriptionStatus
+      );
+    });
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}, [status]);
 
   async function loadPage() {
     const userStatus = await getUserStatus();
