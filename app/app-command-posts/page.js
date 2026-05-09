@@ -1,14 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 export default function AppCommandPosts() {
   const [posts, setPosts] = useState([]);
   const [comments, setComments] = useState({});
   const [inputs, setInputs] = useState({});
-
-  const postsEndRef = useRef(null);
 
   useEffect(() => {
     loadPosts();
@@ -44,16 +42,6 @@ export default function AppCommandPosts() {
       supabase.removeChannel(channel);
     };
   }, []);
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [posts, comments]);
-
-  function scrollToBottom() {
-    postsEndRef.current?.scrollIntoView({
-      behavior: "smooth",
-    });
-  }
 
   async function loadPosts() {
     const { data, error } = await supabase
@@ -208,8 +196,6 @@ export default function AppCommandPosts() {
             </div>
           </div>
         ))}
-
-        <div ref={postsEndRef} />
       </div>
     </main>
   );
