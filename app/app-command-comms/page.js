@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 export default function AppCommandComms() {
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState("");
+
+  const messagesEndRef = useRef(null);
 
   useEffect(() => {
     loadMessages();
@@ -19,12 +21,29 @@ export default function AppCommandComms() {
           loadMessages();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log("Command comms realtime status:", status);
+      });
+
+    const refreshTimer = setInterval(() => {
+      loadMessages();
+    }, 3000);
 
     return () => {
+      clearInterval(refreshTimer);
       supabase.removeChannel(channel);
     };
   }, []);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  function scrollToBottom() {
+    messagesEndRef.current?.scrollIntoView({
+      behavior: "smooth",
+    });
+  }
 
   async function loadMessages() {
     const { data, error } = await supabase
@@ -88,9 +107,14 @@ export default function AppCommandComms() {
             <p className="text-sm font-bold text-red-400">
               {msg.rsi_handle || "Member"}
             </p>
-            <p className="mt-1 text-sm text-zinc-200">{msg.message}</p>
+
+            <p className="mt-1 text-sm text-zinc-200">
+              {msg.message}
+            </p>
           </div>
         ))}
+
+        <div ref={messagesEndRef} />
       </div>
 
       <form onSubmit={sendMessage} className="flex gap-2">
