@@ -21,6 +21,7 @@ export default function MaterialsPage() {
   const [qualityFilter, setQualityFilter] = useState(0);
   const [search, setSearch] = useState("");
   const [message, setMessage] = useState("Loading...");
+  const [editingId, setEditingId] = useState(null);
 
   useEffect(() => {
     loadMaterials();
@@ -66,7 +67,8 @@ export default function MaterialsPage() {
     const scu = Number(scuAmount);
 
     if (!cleanName) return setMessage("Enter a material name.");
-    if (!quality || quality < 1 || quality > 999) return setMessage("Enter quality from 1 to 999.");
+    if (!quality || quality < 1 || quality > 999)
+      return setMessage("Enter quality from 1 to 999.");
     if (!scu || scu <= 0) return setMessage("Enter SCU amount.");
 
     const { data } = await supabase.auth.getUser();
@@ -82,25 +84,79 @@ export default function MaterialsPage() {
 
     const displayName = member?.rsi_handle || user.email;
 
-    const { error } = await supabase.from("org_materials").insert({
-      user_id: user.id,
-      rsi_handle: displayName,
+    const payload = {
       material_name: cleanName,
       quality_value: quality,
       scu_amount: scu,
       quality_tier: `${quality}+`,
-    });
+    };
+
+    let error;
+
+    if (editingId) {
+      const response = await supabase
+        .from("org_materials")
+        .update(payload)
+        .eq("id", editingId);
+
+      error = response.error;
+    } else {
+      const response = await supabase.from("org_materials").insert({
+        user_id: user.id,
+        rsi_handle: displayName,
+        ...payload,
+      });
+
+      error = response.error;
+    }
 
     if (error) {
       console.error(error);
-      setMessage("Failed to add material.");
+      setMessage("Failed to save material.");
       return;
     }
 
+    resetForm();
+    loadMaterials();
+  }
+
+  function resetForm() {
     setMaterialName("");
     setQualityValue("");
     setScuAmount("");
+    setEditingId(null);
     setMessage("");
+  }
+
+  function startEdit(entry) {
+    setEditingId(entry.id);
+    setMaterialName(entry.material_name || "");
+    setQualityValue(entry.quality_value || "");
+    setScuAmount(entry.scu_amount || "");
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  }
+
+  async function deleteEntry(id) {
+    const confirmed = window.confirm(
+      "Delete this inventory entry?"
+    );
+
+    if (!confirmed) return;
+
+    const { error } = await supabase
+      .from("org_materials")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      console.error(error);
+      alert("Failed to delete entry.");
+      return;
+    }
+
     loadMaterials();
   }
 
@@ -119,7 +175,9 @@ export default function MaterialsPage() {
 
     for (const item of filtered) {
       const name = item.material_name || "Unknown Material";
+
       if (!grouped[name]) grouped[name] = [];
+
       grouped[name].push(item);
     }
 
@@ -132,7 +190,9 @@ export default function MaterialsPage() {
           0
         ),
         entries: grouped[name].sort(
-          (a, b) => Number(b.quality_value || 0) - Number(a.quality_value || 0)
+          (a, b) =>
+            Number(b.quality_value || 0) -
+            Number(a.quality_value || 0)
         ),
       }));
   }, [materials, search, qualityFilter]);
@@ -150,8 +210,7 @@ export default function MaterialsPage() {
           </h1>
 
           <p className="mt-3 max-w-3xl text-zinc-400">
-            Track exact material quality and SCU by member. Search by material,
-            filter by quality, and see who has what at a glance.
+            Track exact material quality and SCU by member.
           </p>
         </section>
 
@@ -159,13 +218,27 @@ export default function MaterialsPage() {
           onSubmit={addMaterial}
           className="mt-6 rounded-3xl border border-zinc-800 bg-black/80 p-5 shadow-xl"
         >
-          <h2 className="text-2xl font-black">Add Inventory</h2>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-2xl font-black">
+              {editingId ? "Edit Inventory" : "Add Inventory"}
+            </h2>
+
+            {editingId && (
+              <button
+                type="button"
+                onClick={resetForm}
+                className="rounded-xl border border-zinc-700 px-4 py-2 text-sm font-bold hover:bg-zinc-900"
+              >
+                Cancel Edit
+              </button>
+            )}
+          </div>
 
           <div className="mt-4 grid gap-3 md:grid-cols-[1fr_160px_160px_140px]">
             <input
               value={materialName}
               onChange={(e) => setMaterialName(e.target.value)}
-              placeholder="Material name, ex: Iron"
+              placeholder="Material name"
               className="rounded-xl border border-zinc-800 bg-zinc-900 p-3 outline-none focus:border-red-700"
             />
 
@@ -173,7 +246,7 @@ export default function MaterialsPage() {
               type="number"
               value={qualityValue}
               onChange={(e) => setQualityValue(e.target.value)}
-              placeholder="Quality 999"
+              placeholder="Quality"
               min="1"
               max="999"
               className="rounded-xl border border-zinc-800 bg-zinc-900 p-3 outline-none focus:border-red-700"
@@ -183,19 +256,21 @@ export default function MaterialsPage() {
               type="number"
               value={scuAmount}
               onChange={(e) => setScuAmount(e.target.value)}
-              placeholder="SCU 100"
+              placeholder="SCU"
               min="0"
               step="0.01"
               className="rounded-xl border border-zinc-800 bg-zinc-900 p-3 outline-none focus:border-red-700"
             />
 
             <button className="rounded-xl bg-red-700 p-3 font-black hover:bg-red-600">
-              Add
+              {editingId ? "Save" : "Add"}
             </button>
           </div>
 
           {message && (
-            <p className="mt-3 text-sm font-bold text-red-400">{message}</p>
+            <p className="mt-3 text-sm font-bold text-red-400">
+              {message}
+            </p>
           )}
         </form>
 
@@ -210,7 +285,9 @@ export default function MaterialsPage() {
 
             <select
               value={qualityFilter}
-              onChange={(e) => setQualityFilter(Number(e.target.value))}
+              onChange={(e) =>
+                setQualityFilter(Number(e.target.value))
+              }
               className="rounded-xl border border-zinc-800 bg-zinc-900 p-3 outline-none focus:border-red-700"
             >
               {QUALITY_FILTERS.map((filter) => (
@@ -223,12 +300,6 @@ export default function MaterialsPage() {
         </section>
 
         <section className="mt-6 grid gap-4">
-          {groupedMaterials.length === 0 && (
-            <div className="rounded-2xl border border-zinc-800 bg-black p-5 text-zinc-400">
-              No materials match this filter.
-            </div>
-          )}
-
           {groupedMaterials.map((material) => (
             <div
               key={material.name}
@@ -239,48 +310,68 @@ export default function MaterialsPage() {
                   <h3 className="text-3xl font-black text-red-400">
                     {material.name}
                   </h3>
+
                   <p className="mt-1 text-sm text-zinc-500">
-                    {material.entries.length} entry
-                    {material.entries.length !== 1 ? "ies" : ""} ·{" "}
+                    {material.entries.length} entries ·{" "}
                     {material.totalScu} total SCU
                   </p>
                 </div>
               </div>
 
-              <div className="grid gap-3 p-4">
-                {material.entries.map((entry) => (
-                  <div
-                    key={entry.id}
-                    className="grid gap-3 rounded-2xl border border-zinc-800 bg-zinc-900 p-4 md:grid-cols-[1fr_120px_120px]"
-                  >
-                    <div>
-                      <p className="font-black">
-                        {entry.rsi_handle || "Member"}
-                      </p>
-                      <p className="text-sm text-zinc-500">
-                        Inventory holder
-                      </p>
-                    </div>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[700px]">
+                  <thead className="border-b border-zinc-800 bg-zinc-950">
+                    <tr className="text-left text-xs uppercase tracking-wider text-zinc-500">
+                      <th className="px-6 py-4">Holder</th>
+                      <th className="px-6 py-4">Quality</th>
+                      <th className="px-6 py-4">SCU</th>
+                      <th className="px-6 py-4">Actions</th>
+                    </tr>
+                  </thead>
 
-                    <div className="rounded-xl border border-red-900 bg-red-950/30 p-3 text-center">
-                      <p className="text-xs font-bold uppercase text-red-300">
-                        Quality
-                      </p>
-                      <p className="text-2xl font-black">
-                        {entry.quality_value || "N/A"}
-                      </p>
-                    </div>
+                  <tbody>
+                    {material.entries.map((entry) => (
+                      <tr
+                        key={entry.id}
+                        className="border-b border-zinc-900 hover:bg-zinc-900/40"
+                      >
+                        <td className="px-6 py-4 font-bold">
+                          {entry.rsi_handle || "Member"}
+                        </td>
 
-                    <div className="rounded-xl border border-zinc-700 bg-black p-3 text-center">
-                      <p className="text-xs font-bold uppercase text-zinc-400">
-                        SCU
-                      </p>
-                      <p className="text-2xl font-black">
-                        {entry.scu_amount || 0}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+                        <td className="px-6 py-4">
+                          <span className="rounded-lg border border-red-900 bg-red-950/30 px-3 py-2 text-sm font-black text-red-300">
+                            {entry.quality_value}
+                          </span>
+                        </td>
+
+                        <td className="px-6 py-4 font-bold">
+                          {entry.scu_amount}
+                        </td>
+
+                        <td className="px-6 py-4">
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => startEdit(entry)}
+                              className="rounded-lg border border-zinc-700 px-3 py-2 text-sm font-bold hover:bg-zinc-800"
+                            >
+                              Edit
+                            </button>
+
+                            <button
+                              onClick={() =>
+                                deleteEntry(entry.id)
+                              }
+                              className="rounded-lg border border-red-900 px-3 py-2 text-sm font-bold text-red-300 hover:bg-red-950/30"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           ))}
