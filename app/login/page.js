@@ -13,8 +13,26 @@ export default function LoginPage() {
 
   useEffect(() => {
     window.addEventListener("message", async (event) => {
-      alert("Message received from MAUI");
-      console.log(event.data);
+      const session = event.data;
+
+      if (session?.type !== "SUPABASE_MOBILE_SESSION") {
+        return;
+      }
+
+      const { error } = await supabase.auth.setSession({
+        access_token: session.access_token,
+        refresh_token: session.refresh_token,
+      });
+
+      if (error) {
+        console.error("Mobile session login failed:", error);
+        return;
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      const redirect = params.get("redirect") || "/";
+
+      window.location.href = redirect;
     });
   }, []);
 
