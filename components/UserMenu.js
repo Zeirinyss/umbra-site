@@ -25,7 +25,9 @@ export default function UserMenu() {
     }
 
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+
+    return () =>
+      document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   async function loadUser() {
@@ -45,11 +47,25 @@ export default function UserMenu() {
   if (!user) {
     return (
       <div className="flex items-center gap-4 text-sm font-bold text-zinc-300">
-        <a href="/about" className="hover:text-red-400">About</a>
-        <a href="/leadership" className="hover:text-red-400">Leadership</a>
-        <a href="/divisions" className="hover:text-red-400">Divisions</a>
-        <a href="/login" className="hover:text-red-400">Login</a>
-        <a href="/request-access" className="hover:text-red-400">Request</a>
+        <a href="/about" className="hover:text-red-400">
+          About
+        </a>
+
+        <a href="/leadership" className="hover:text-red-400">
+          Leadership
+        </a>
+
+        <a href="/divisions" className="hover:text-red-400">
+          Divisions
+        </a>
+
+        <a href="/login" className="hover:text-red-400">
+          Login
+        </a>
+
+        <a href="/request-access" className="hover:text-red-400">
+          Request
+        </a>
       </div>
     );
   }
@@ -57,17 +73,30 @@ export default function UserMenu() {
   if (status === "pending") {
     return (
       <div className="flex items-center gap-4 text-sm font-bold text-zinc-300">
-        <a href="/pending" className="hover:text-red-400">Pending</a>
-        <button onClick={logout} className="hover:text-red-400">Logout</button>
+        <a href="/pending" className="hover:text-red-400">
+          Pending
+        </a>
+
+        <button onClick={logout} className="hover:text-red-400">
+          Logout
+        </button>
       </div>
     );
   }
 
   return (
     <div className="flex items-center gap-4 text-sm font-bold text-zinc-300">
-      <a href="/about" className="hover:text-red-400">About</a>
-      <a href="/leadership" className="hover:text-red-400">Leadership</a>
-      <a href="/divisions" className="hover:text-red-400">Divisions</a>
+      <a href="/about" className="hover:text-red-400">
+        About
+      </a>
+
+      <a href="/leadership" className="hover:text-red-400">
+        Leadership
+      </a>
+
+      <a href="/divisions" className="hover:text-red-400">
+        Divisions
+      </a>
 
       <div className="hidden h-5 w-px bg-zinc-700 md:block" />
 
@@ -135,10 +164,17 @@ export default function UserMenu() {
               Org Funds
             </a>
 
+            <a
+              href="/materials"
+              className="block px-4 py-2 hover:bg-zinc-900"
+            >
+              Materials Inventory
+            </a>
+
             {role && (
               <a
                 href="/admin/site-settings"
-                className="block px-4 py-2 hover:bg-zinc-900 text-red-400"
+                className="block px-4 py-2 text-red-400 hover:bg-zinc-900"
               >
                 Site Settings
               </a>
@@ -147,7 +183,7 @@ export default function UserMenu() {
             {role && (
               <a
                 href="/admin/leadership"
-                className="block px-4 py-2 hover:bg-zinc-900 text-red-400"
+                className="block px-4 py-2 text-red-400 hover:bg-zinc-900"
               >
                 Leadership Editor
               </a>
@@ -164,7 +200,7 @@ export default function UserMenu() {
 
             <button
               onClick={logout}
-              className="w-full text-left px-4 py-2 hover:bg-zinc-900"
+              className="w-full px-4 py-2 text-left hover:bg-zinc-900"
             >
               Logout
             </button>
