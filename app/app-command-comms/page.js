@@ -14,22 +14,29 @@ export default function AppCommandComms() {
       .channel("app-command-comms-live")
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "command_comms" },
-        (payload) => {
-          setMessages((current) => [...current, payload.new]);
+        { event: "*", schema: "public", table: "command_comms" },
+        () => {
+          loadMessages();
         }
       )
       .subscribe();
 
-    return () => supabase.removeChannel(channel);
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   async function loadMessages() {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("command_comms")
       .select("*")
       .order("created_at", { ascending: true })
       .limit(100);
+
+    if (error) {
+      console.error("Failed to load messages:", error);
+      return;
+    }
 
     setMessages(data || []);
   }
@@ -47,13 +54,28 @@ export default function AppCommandComms() {
       return;
     }
 
-    await supabase.from("command_comms").insert({
+    const { data: member } = await supabase
+      .from("members")
+      .select("rsi_handle")
+      .eq("email", user.email)
+      .maybeSingle();
+
+    const displayName = member?.rsi_handle || user.email;
+
+    const { error } = await supabase.from("command_comms").insert({
       user_id: user.id,
-      rsi_handle: user.email,
+      rsi_handle: displayName,
       message: message.trim(),
     });
 
+    if (error) {
+      console.error("Failed to send message:", error);
+      alert("Message failed to send.");
+      return;
+    }
+
     setMessage("");
+    loadMessages();
   }
 
   return (
