@@ -22,6 +22,7 @@ export default function MaterialsPage() {
   const [search, setSearch] = useState("");
   const [message, setMessage] = useState("Loading...");
   const [editingId, setEditingId] = useState(null);
+  const [selectedMaterial, setSelectedMaterial] = useState(null);
 
   useEffect(() => {
     loadMaterials();
@@ -116,6 +117,7 @@ export default function MaterialsPage() {
       return;
     }
 
+    setSelectedMaterial(cleanName);
     resetForm();
     loadMaterials();
   }
@@ -133,6 +135,8 @@ export default function MaterialsPage() {
     setMaterialName(entry.material_name || "");
     setQualityValue(entry.quality_value || "");
     setScuAmount(entry.scu_amount || "");
+    setSelectedMaterial(entry.material_name || null);
+
     window.scrollTo({
       top: 0,
       behavior: "smooth",
@@ -140,9 +144,7 @@ export default function MaterialsPage() {
   }
 
   async function deleteEntry(id) {
-    const confirmed = window.confirm(
-      "Delete this inventory entry?"
-    );
+    const confirmed = window.confirm("Delete this inventory entry?");
 
     if (!confirmed) return;
 
@@ -196,6 +198,10 @@ export default function MaterialsPage() {
         ),
       }));
   }, [materials, search, qualityFilter]);
+
+  const selectedMaterialData = groupedMaterials.find(
+    (material) => material.name === selectedMaterial
+  );
 
   return (
     <main className="min-h-screen bg-zinc-950 p-4 text-white">
@@ -278,16 +284,20 @@ export default function MaterialsPage() {
           <div className="grid gap-3 md:grid-cols-[1fr_220px]">
             <input
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setSelectedMaterial(null);
+              }}
               placeholder="Search material..."
               className="rounded-xl border border-zinc-800 bg-zinc-900 p-3 outline-none focus:border-red-700"
             />
 
             <select
               value={qualityFilter}
-              onChange={(e) =>
-                setQualityFilter(Number(e.target.value))
-              }
+              onChange={(e) => {
+                setQualityFilter(Number(e.target.value));
+                setSelectedMaterial(null);
+              }}
               className="rounded-xl border border-zinc-800 bg-zinc-900 p-3 outline-none focus:border-red-700"
             >
               {QUALITY_FILTERS.map((filter) => (
@@ -300,22 +310,84 @@ export default function MaterialsPage() {
         </section>
 
         <section className="mt-6 grid gap-4">
-          {groupedMaterials.map((material) => (
-            <div
-              key={material.name}
-              className="overflow-hidden rounded-3xl border border-zinc-800 bg-black shadow-xl"
-            >
+          <div className="rounded-3xl border border-zinc-800 bg-black shadow-xl">
+            <div className="border-b border-zinc-800 bg-zinc-950 p-5">
+              <h2 className="text-2xl font-black">Material Directory</h2>
+
+              <p className="mt-1 text-sm text-zinc-500">
+                Click a material to open its inventory.
+              </p>
+            </div>
+
+            {groupedMaterials.length === 0 ? (
+              <div className="p-5 text-zinc-400">
+                No materials match this filter.
+              </div>
+            ) : (
+              <div className="grid gap-2 p-4 md:grid-cols-2 xl:grid-cols-3">
+                {groupedMaterials.map((material) => (
+                  <button
+                    key={material.name}
+                    onClick={() =>
+                      setSelectedMaterial(
+                        selectedMaterial === material.name
+                          ? null
+                          : material.name
+                      )
+                    }
+                    className={`rounded-2xl border p-4 text-left transition-all ${
+                      selectedMaterial === material.name
+                        ? "border-red-700 bg-red-950/20"
+                        : "border-zinc-800 bg-zinc-900 hover:border-red-900 hover:bg-zinc-800"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-2xl font-black text-red-400">
+                          {material.name}
+                        </h3>
+
+                        <p className="mt-1 text-sm text-zinc-500">
+                          {material.entries.length} entries
+                        </p>
+                      </div>
+
+                      <div className="rounded-xl border border-zinc-700 bg-black px-4 py-2 text-center">
+                        <p className="text-xs uppercase text-zinc-500">
+                          Total SCU
+                        </p>
+
+                        <p className="text-xl font-black">
+                          {material.totalScu}
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {selectedMaterialData && (
+            <div className="overflow-hidden rounded-3xl border border-zinc-800 bg-black shadow-xl">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800 bg-zinc-950 p-5">
                 <div>
                   <h3 className="text-3xl font-black text-red-400">
-                    {material.name}
+                    {selectedMaterialData.name}
                   </h3>
 
                   <p className="mt-1 text-sm text-zinc-500">
-                    {material.entries.length} entries ·{" "}
-                    {material.totalScu} total SCU
+                    {selectedMaterialData.entries.length} entries ·{" "}
+                    {selectedMaterialData.totalScu} total SCU
                   </p>
                 </div>
+
+                <button
+                  onClick={() => setSelectedMaterial(null)}
+                  className="rounded-xl border border-zinc-700 px-4 py-2 text-sm font-bold hover:bg-zinc-900"
+                >
+                  Close
+                </button>
               </div>
 
               <div className="overflow-x-auto">
@@ -330,7 +402,7 @@ export default function MaterialsPage() {
                   </thead>
 
                   <tbody>
-                    {material.entries.map((entry) => (
+                    {selectedMaterialData.entries.map((entry) => (
                       <tr
                         key={entry.id}
                         className="border-b border-zinc-900 hover:bg-zinc-900/40"
@@ -359,9 +431,7 @@ export default function MaterialsPage() {
                             </button>
 
                             <button
-                              onClick={() =>
-                                deleteEntry(entry.id)
-                              }
+                              onClick={() => deleteEntry(entry.id)}
                               className="rounded-lg border border-red-900 px-3 py-2 text-sm font-bold text-red-300 hover:bg-red-950/30"
                             >
                               Delete
@@ -374,7 +444,7 @@ export default function MaterialsPage() {
                 </table>
               </div>
             </div>
-          ))}
+          )}
         </section>
       </div>
     </main>
