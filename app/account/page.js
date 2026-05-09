@@ -10,18 +10,18 @@ export default function AccountPage() {
   const [message, setMessage] = useState("Loading...");
 
   useEffect(() => {
-  loadAccount();
+    loadAccount();
 
-  const unsubscribe = subscribeToTables(
-    "account-live",
-    ["members"],
-    () => {
-      loadAccount();
-    }
-  );
+    const unsubscribe = subscribeToTables(
+      "account-live",
+      ["members"],
+      () => {
+        loadAccount();
+      }
+    );
 
-  return unsubscribe;
-}, []);
+    return unsubscribe;
+  }, []);
 
   async function loadAccount() {
     const { data } = await supabase.auth.getUser();
@@ -67,6 +67,7 @@ export default function AccountPage() {
             </h2>
 
             <div className="mt-6 grid gap-4 text-zinc-300">
+              <p><b>Username:</b> {member?.rsi_handle || user?.email}</p>
               <p><b>Email:</b> {user?.email}</p>
               <p><b>RSI Handle:</b> {member?.rsi_handle || "Not approved yet"}</p>
               <p><b>Rank:</b> {member?.rank || "N/A"}</p>
@@ -74,15 +75,24 @@ export default function AccountPage() {
             </div>
 
             <div className="mt-8 flex flex-wrap gap-3">
-              <a href="/" className="rounded-xl border border-zinc-800 px-5 py-3 font-bold hover:bg-zinc-900">
+              <a
+                href="/"
+                className="rounded-xl border border-zinc-800 px-5 py-3 font-bold hover:bg-zinc-900"
+              >
                 Home
               </a>
 
-              <a href="/my-fleet" className="rounded-xl border border-zinc-800 px-5 py-3 font-bold hover:bg-zinc-900">
+              <a
+                href="/my-fleet"
+                className="rounded-xl border border-zinc-800 px-5 py-3 font-bold hover:bg-zinc-900"
+              >
                 My Fleet
               </a>
 
-              <a href="/events" className="rounded-xl border border-zinc-800 px-5 py-3 font-bold hover:bg-zinc-900">
+              <a
+                href="/events"
+                className="rounded-xl border border-zinc-800 px-5 py-3 font-bold hover:bg-zinc-900"
+              >
                 Calendar
               </a>
 
