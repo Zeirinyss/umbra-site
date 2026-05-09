@@ -18,7 +18,11 @@ export default function LoginPage() {
       if (session?.type !== "SUPABASE_MOBILE_SESSION") {
         return;
       }
-
+	
+      if (!session.access_token || !session.refresh_token) {
+         console.error("Missing Supabase tokens from MAUI app.");
+        return;
+     }
       const { error } = await supabase.auth.setSession({
         access_token: session.access_token,
         refresh_token: session.refresh_token,
