@@ -29,9 +29,7 @@ export default function Home() {
   async function loadStatus() {
     const status = await getUserStatus();
 
-    setIsApprovedMember(
-      !!status.user && status.status === "approved"
-    );
+    setIsApprovedMember(!!status.user && status.status === "approved");
   }
 
   async function loadSettings() {
@@ -178,6 +176,13 @@ export default function Home() {
                   className="rounded-2xl border border-indigo-700 bg-indigo-900/30 px-8 py-4 font-black text-indigo-300 transition hover:bg-indigo-800/40 active:scale-95"
                 >
                   Join Discord
+                </a>
+
+                <a
+                  href="/media"
+                  className="rounded-2xl border border-cyan-800 bg-cyan-900/20 px-8 py-4 font-black text-cyan-300 transition hover:bg-cyan-800/30 active:scale-95"
+                >
+                  Media Library
                 </a>
 
                 {isApprovedMember && (
